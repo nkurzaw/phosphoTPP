@@ -2,12 +2,10 @@
 
 export(chooseCoherentGeneNames)
 export(countAtLeast)
-export(countGoodProb)
 export(fitMeltcurveModelAndEval)
 export(getNormFactors4Data)
 export(getPhosphoSiteId)
 export(getProb)
-export(getTm)
 export(lowerFn)
 export(plotDiffPhosphoMeltcurve)
 export(plotDiffPhosphoSpline)

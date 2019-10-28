@@ -1,3 +1,4 @@
+#' Get localization site probability from MaxQuant file
 #' @export
 getProb <- function(x, p_thres = 0.75){
     tmp <- strsplit(gsub("[^0-9,\\.]", ",", x), split = ",")
@@ -6,15 +7,6 @@ getProb <- function(x, p_thres = 0.75){
     })
 }
 
-#' @export
-countGoodProb <- function(x, p_thres = 0.75){
-    tmp <- strsplit(gsub("[^0-9,\\.]", ",", x), split = ",")
-    sapply(tmp, function(y){
-        length(which(as.numeric(y[which(y != "")]) >  p_thres))
-    })
-}
-
-#' @export
 getTm <- function(h1_model, x_in = seq(35, 75, by = 0.001), tolerance = 0.01){
     predicted_vals <- predict(h1_model, newdata = data.frame(
         temperature = x_in))
@@ -33,6 +25,7 @@ fitMeltcurve <- function(df, curve_func = drc::LL.4(fixed = c(NA, NA, 1, NA))){
     return(h1_model)
 }
 
+#' Fit melting curve per peptide / protein
 #' @export
 fitMeltcurveModelAndEval <- function(df, curve_func = drc::LL.4(fixed = c(NA, NA, 1, NA))){
     h0_model <- lm(df$rel_value ~ 1)
@@ -48,7 +41,6 @@ fitMeltcurveModelAndEval <- function(df, curve_func = drc::LL.4(fixed = c(NA, NA
                    meltPoint = tm,
                    slopeFactor = coef(h1_model)[1],
                    plateau = coef(h1_model)[2],
-                   #maximum = coef(h1_model)[3],
                    inflectionPoint = coef(h1_model)[3])
     }else{
         data.frame(rSq = NA,
@@ -60,6 +52,7 @@ fitMeltcurveModelAndEval <- function(df, curve_func = drc::LL.4(fixed = c(NA, NA
     }
 }
 
+#' Create phosphosite id / Gene_pSite
 #' @export
 getPhosphoSiteId <- function(gene_name, string, seq){
     seq_match <- str_locate(seq, gsub("[p,_]", "", string))[1]
@@ -160,6 +153,7 @@ getNormFactors <- function(meltcurve_fit_list){
     return(out_list)
 }
 
+#' Derive normalization factors for replicates
 #' @export
 getNormFactors4Data <- function(pep_tab, temperature_anno, n_rep,
                                 filter_criteria = list("rel_fc_127H_low" = 0,
@@ -187,6 +181,7 @@ decideOnGeneName <- function(in_vec, ref_vec){
     } , FUN.VALUE = "tst", USE.NAMES = FALSE)
 }
 
+#' Choose coherent gene names
 #' @export
 chooseCoherentGeneNames <- function(in_df, their_data){
     their_gene_names <- unique(gsub("_.+", "", their_data$Gene_pSite))
@@ -197,6 +192,7 @@ chooseCoherentGeneNames <- function(in_df, their_data){
     return(out_df)
 }
 
+#' Lower Functions for GGally
 #' @export
 lowerFn <- function(data, mapping, dot.size) {
     p <- ggplot(data = data, mapping = mapping) +
@@ -208,6 +204,7 @@ lowerFn <- function(data, mapping, dot.size) {
     p
 }
 
+#' Count significant adjusted p-values
 #' @export
 countAtLeast <- function(x, val_with_sign, min_n = 2, thres = 0.1){
     ids <- which(x <= thres)
@@ -215,6 +212,7 @@ countAtLeast <- function(x, val_with_sign, min_n = 2, thres = 0.1){
     (length(ids) >= min_n) & (length(unique(sign(val_with_sign[non_na_ids]))) < 2)
 }
 
+#' Plot differential melting curves
 #' @export
 plotDiffPhosphoMeltcurve <- function(g_name, p_seq, 
                                      predict_vec = seq(35, 70, by = 0.1),
@@ -256,9 +254,6 @@ plotDiffPhosphoMeltcurve <- function(g_name, p_seq,
         geom_errorbar(aes(ymin = mean_rel_value - se_rel_value, 
                           ymax = mean_rel_value + se_rel_value), 
                       width=.1, size = 0.25) +
-        # geom_smooth(method = "lm", 
-        #             formula = y ~ splines::ns(x, df = 4),
-        #             se = FALSE) +
         geom_line(data = prot_fit_df, size = 0.25) +
         scale_color_manual("", values = c("all unmodified" = "chartreuse3", "phosphopeptide" = "purple")) +
         theme_bw() +
@@ -270,6 +265,7 @@ plotDiffPhosphoMeltcurve <- function(g_name, p_seq,
         theme_paper
 }
 
+#' Fit differentil melting curves fitted by Splines
 #' @export
 plotDiffPhosphoSpline <- function(g_name, p_seq, spline_df = 4,
                                   predict_vec = seq(35, 70, by = 0.1),
