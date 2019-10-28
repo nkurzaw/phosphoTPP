@@ -11,5 +11,5 @@ License: AGPL-3
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.1.0
-Depends: R (>= 3.5.0), dplyr, tidyr, readr, readxl, ggplot2
-Suggests: cowplot
+Depends: R (>= 3.5.0), dplyr, tidyr, readr, readxl, ggplot2, drc
+Suggests: cowplot, ggpmisc
