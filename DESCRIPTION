@@ -9,7 +9,8 @@ Description: Functions and analysis workflow for phosphoTPP datasets
     using melting curve fits and differential melting point tests.
 License: AGPL-3
 Encoding: UTF-8
+VignetteBuilder: knitr
 LazyData: true
 RoxygenNote: 6.1.0
-Depends: R (>= 3.5.0), dplyr, tidyr, readr, readxl, ggplot2, drc
-Suggests: cowplot, ggpmisc
+Depends: R (>= 3.5.0), knitr, dplyr, tidyr, readr, readxl, ggplot2, drc
+Suggests: cowplot, ggpmisc, splines

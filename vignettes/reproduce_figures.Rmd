@@ -6,7 +6,7 @@ output: rmarkdown::html_vignette
 vignette: >
   %\VignetteEngine{knitr::knitr}
   %\VignetteIndexEntry{Analysis of phosphoTPP datasets}
-  %\usepackage[UTF-8]{inputenc}
+  %VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include=FALSE}
@@ -29,14 +29,14 @@ r2_thres <- 0.8
 plateau_thres <- 0.2
 ```
 
-```{r}
+```{r, eval=FALSE}
 # load config tables
 cfg_tab <- readxl::read_xlsx(file.path("../dat", "TPP-TR_config_phospho.xlsx"))
 cfg_tab %>% dplyr::select(-Path)
 
 ```
 
-```{r}
+```{r, eval=FALSE}
 temperature_anno <- cfg_tab %>%
   dplyr::select(matches('[0-9]{3}')) %>%
   gather(key, temperature) %>%
@@ -50,33 +50,33 @@ temperature_anno_prot <- cfg_tab  %>%
   mutate(fc_channel = paste("rel_fc", key, sep = "_"))
 ```
 
-```{r}
+```{r, eval=FALSE}
 # read in lists of phospho and nbt protein and peptides tables per replicate
 phospho_protein_files <- list.files("../dat", pattern = 'phospho.+protein', full.names = TRUE)
 phospho_protein_files
 ```
 
-```{r}
+```{r, eval=FALSE}
 nbf_protein_files <- list.files("../dat", pattern = 'NBF.+protein', full.names = TRUE)
 nbf_protein_files
 ```
 
-```{r}
+```{r, eval=FALSE}
 phospho_peptide_files <- list.files("../dat", pattern = 'phospho.+peptide.+txt', full.names = TRUE)
 phospho_peptide_files
 ```
 
-```{r}
+```{r, eval=FALSE}
 phosho_mxq_peptide_files <- list.files("../dat", pattern = 'pTPP.+txt', full.names = TRUE)
 phosho_mxq_peptide_files
 ```
 
-```{r}
+```{r, eval=FALSE}
 nbf_peptide_files <- list.files("../dat", pattern = 'NBF.+peptide', full.names = TRUE)
 nbf_peptide_files
 ```
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
 # read data files into lists of replicates
 phospho_protein_tabs <- lapply(seq_len(length(phospho_protein_files)), function(file_i){
   read_delim(phospho_protein_files[file_i], delim = "\t") %>% 
@@ -163,7 +163,7 @@ nbf_peptide_tabs <- lapply(seq_len(length(nbf_peptide_files)), function(file_i){
 
 ```
 
-```{r}
+```{r, eval=FALSE}
 # compute normalization factors
 ## first compute median normalization factors for shared non-phospho peptides between 
 ## matching phospho-enriched and nbf samples
@@ -200,7 +200,7 @@ per_exp_norm_factors <- lapply(seq_len(n_rep), function(rep_i){
 per_exp_norm_factors
 ```
 
-```{r}
+```{r, eval=FALSE}
 ## now compute normalizing factors retrieved from curves fitted on hq data shared 
 ## between different nbf replicates
 norm_in_df <- 
@@ -222,7 +222,7 @@ nbf_peptide_norm_factors <- getNormFactors4Data(
 nbf_peptide_norm_factors
 ```
 
-```{r}
+```{r, eval=FALSE}
 # retrieve one table of per normalized nbf/phospho peptide fold changes
 # and compare to non-normalized one
 nbf_peptide_filtered_not_norm <- bind_rows(lapply(seq_len(length(nbf_peptide_tabs)),
@@ -328,7 +328,7 @@ plot_grid(p_qc1_1 + ggtitle("raw nbf"), p_qc1_2 + ggtitle("raw phospho"),
           p_qc1_4 + ggtitle("curve-based norm phospho, whith prior median norm by non-phospho peptides"), ncol = 2)
 ```
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
 # fit curves to nbf dataset
 out_nbf_df <- nbf_peptide_filtered %>% 
   group_by(gene_name, replicate) %>%
@@ -355,7 +355,7 @@ ggmatrix(list(pm[2, 1], NULL, NULL, NULL,
          yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
 ```
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
 # fit curves to not-normalized nbf dataset
 out_nbf_nn_df <- nbf_peptide_filtered_not_norm %>% 
   group_by(gene_name, replicate) %>%
@@ -383,7 +383,7 @@ ggmatrix(list(pm_nn[2, 1], NULL, NULL, NULL,
          yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
 ```
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
 # fit phospho peptide melting curves
 out_phospho_df <- phospho_peptide_tab_filtered %>%
   dplyr::select(protein_id, gene_name, sequence, 
@@ -415,7 +415,7 @@ ggmatrix(list(pm_phospho[2, 1], NULL, NULL, NULL,
          yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
 ```
 
-```{r, warning=FALSE, message=FALSE}
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
 # fit non-norm phospho peptide melting curves
 out_phospho_nn_df <- phospho_peptide_tab_filtered_not_norm %>%
   dplyr::select(protein_id, gene_name, sequence, 
@@ -448,7 +448,7 @@ ggmatrix(list(pm_phospho_nn[2, 1], NULL, NULL, NULL,
          yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
 ```
 
-```{r}
+```{r, eval=FALSE}
 # create scatterplot of phospho and nbf Tm with non-normalized data
 phospho_combo_nn_df <- left_join(
   out_phospho_nn_df %>%
@@ -483,7 +483,7 @@ ggplot(phospho_combo_nn_df,
   theme_bw()
 ```
 
-```{r}
+```{r, eval=FALSE}
 nbf_tm_rep_fil <- out_nbf_df %>% 
   filter(rSq > r2_thres, plateau < plateau_thres) %>% 
   group_by(gene_name) %>% 
@@ -547,7 +547,7 @@ combo_mean_tm_stringent_df <- combo_tm_df %>%
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 # choose gene names to maximize overlap with Huang et al.
 ## load Huang et al. phospho dataset
 huang_phospho_tab <- readxl::read_xlsx(file.path("../dat", "41592_2019_499_MOESM4_ESM.xlsx"), skip = 2)
@@ -563,7 +563,7 @@ combo_mean_tm_fcs_choosen_gene_names <-
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 # annotate phospho sites 
 disordered_anno <- read_delim(
     file.path("../dat", "all_uniprot_instrinsically_disordered.txt"),
@@ -619,7 +619,7 @@ p_1b <- ggplot(combo_mean_tm_pSite_anno, aes(mean_nbf, mean_phospho)) +
   theme_paper
 ```
 
-```{r}
+```{r, eval=FALSE}
 # annotate ochoa et al. functional scores
 ochoa_et_al_anno <- readxl::read_xlsx(file.path("../dat", "56035_2_data_set_478471_pxb8gk.xlsx"))
 ochoa_et_al_mapping <- read_delim(file.path("../dat", "ochoa_mapping.txt"), delim = "\t")
@@ -648,7 +648,7 @@ combo_mean_tm_pSite_anno_functional_scores <- left_join(
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 huang_bulk <- readxl::read_xlsx(file.path("../dat", "41592_2019_499_MOESM3_ESM.xlsx"), skip = 2) %>%
   dplyr::select(uniprot_id = `Uniprot Accession`,
                 average_tm_nbf = `Average Tm (°C)`) %>% 
@@ -688,7 +688,7 @@ p_1a <- ggplot(huang_phospho_hq_potel_anno, aes(average_tm_nbf, average_tm_phosp
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 # ochoa functional score on Huang et al data
 huang_phospho_hq_functional_score <- left_join(
   huang_phospho_hq %>% 
@@ -727,7 +727,7 @@ p_1c <- ggplot(func_score_combo_df , aes(significant, functional_score)) +
   theme_paper
 ```
 
-```{r}
+```{r, eval=FALSE}
 # examples from this study
 p_1d <- plotDiffPhosphoMeltcurve(
   g_name = "LYN", p_seq = "_VIEDNEpYTAR_", 
@@ -752,7 +752,7 @@ p_1f <- plotDiffPhosphoMeltcurve(
 
 ```
 
-```{r}
+```{r, eval=FALSE}
 # assemble full figure
 plot_grid(
   plot_grid(p_1a, p_1b, p_1c, 

@@ -6,6 +6,13 @@
 \usage{
 lowerFn(data, mapping, dot.size)
 }
+\arguments{
+\item{data}{data frame imported from ggpairs}
+
+\item{mapping}{variable imported from ggpairs}
+
+\item{dot.size}{size of geom_point}
+}
 \description{
 Lower Functions for GGally
 }

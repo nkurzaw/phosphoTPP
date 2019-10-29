@@ -6,6 +6,15 @@
 \usage{
 getPhosphoSiteId(gene_name, string, seq)
 }
+\arguments{
+\item{gene_name}{vector of charaters indicating gene names}
+
+\item{string}{vector of characters indicating the measured 
+peptide sequence with indicated phosphosite "p"}
+
+\item{seq}{vector of characters with protein sequence 
+corresponding to gene names}
+}
 \description{
 Create phosphosite id / Gene_pSite
 }

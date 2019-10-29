@@ -6,6 +6,14 @@
 \usage{
 getProb(x, p_thres = 0.75)
 }
+\arguments{
+\item{x}{column name of data frame or vector including
+sequence including positional probability as created
+by MaxQuant}
+
+\item{p_thres}{probability threshold for good phosphosite
+localization, deafult is 0.75}
+}
 \description{
 Get localization site probability from MaxQuant file
 }

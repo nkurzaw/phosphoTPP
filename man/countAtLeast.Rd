@@ -2,10 +2,20 @@
 % Please edit documentation in R/functions.R
 \name{countAtLeast}
 \alias{countAtLeast}
-\title{Count significant adjusted p-values}
+\title{Find significant adjusted p-values}
 \usage{
 countAtLeast(x, val_with_sign, min_n = 2, thres = 0.1)
 }
+\arguments{
+\item{x}{column / vector of adjusted p-values}
+
+\item{val_with_sign}{column /vector containing variables used for testing
+e.g. melting point difference}
+
+\item{min_n}{number of minimal significant adj. p-values}
+
+\item{thres}{adjusted p-value threshold}
+}
 \description{
-Count significant adjusted p-values
+Find significant adjusted p-values
 }

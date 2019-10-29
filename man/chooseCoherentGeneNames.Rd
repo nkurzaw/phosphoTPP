@@ -6,6 +6,11 @@
 \usage{
 chooseCoherentGeneNames(in_df, their_data)
 }
+\arguments{
+\item{in_df}{input data frame with column 'gene_name'}
+
+\item{their_data}{reference data frame with column 'Gene_pSite'}
+}
 \description{
 Choose coherent gene names
 }

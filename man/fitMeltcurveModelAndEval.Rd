@@ -7,6 +7,12 @@
 fitMeltcurveModelAndEval(df, curve_func = drc::LL.4(fixed = c(NA, NA, 1,
   NA)))
 }
+\arguments{
+\item{df}{data frame including the columns temperature and rel_value}
+
+\item{curve_func}{function of the drc package to be used for curve fitting
+default is drc::LL.4(fixed = c(NA, NA, 1, NA))}
+}
 \description{
 Fit melting curve per peptide / protein
 }

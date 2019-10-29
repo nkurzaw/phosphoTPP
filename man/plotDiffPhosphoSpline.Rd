@@ -7,6 +7,22 @@
 plotDiffPhosphoSpline(g_name, p_seq, spline_df = 4,
   predict_vec = seq(35, 70, by = 0.1), nbf_df, phospho_df, Gene_pSite)
 }
+\arguments{
+\item{g_name}{gene name}
+
+\item{p_seq}{phophopeptide sequence}
+
+\item{spline_df}{degrees of freedom of spline fit}
+
+\item{predict_vec}{vector of temperatures to predict 
+melting curve fits for}
+
+\item{nbf_df}{data frame of unmodified qunantitative data}
+
+\item{phospho_df}{data frame of phosphopeptide quantitative data}
+
+\item{Gene_pSite}{phosphosite id to be displayed as title}
+}
 \description{
 Fit differentil melting curves fitted by Splines
 }

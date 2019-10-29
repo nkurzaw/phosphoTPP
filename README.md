@@ -3,7 +3,7 @@
 
 R package for analysis of phosphoTPP datasets
 
-### Installation of the development version
+### Installation
 
 ```{R}
 require("devtools")
