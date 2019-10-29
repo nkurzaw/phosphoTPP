@@ -15,8 +15,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, warning=FALSE, message=FALSE}
 library(phosphoTPP)
-library(cowplot)
-library(GGally)
 ```
 
 ```{r}
@@ -323,7 +321,7 @@ p_qc1_4 <- phospho_peptide_tab_filtered %>%
   facet_wrap(~replicate) + 
   coord_cartesian(ylim = c(0, 2.5))
 
-plot_grid(p_qc1_1 + ggtitle("raw nbf"), p_qc1_2 + ggtitle("raw phospho"), 
+cowplot::plot_grid(p_qc1_1 + ggtitle("raw nbf"), p_qc1_2 + ggtitle("raw phospho"), 
           p_qc1_3 + ggtitle("curve-based norm nbf"),
           p_qc1_4 + ggtitle("curve-based norm phospho, whith prior median norm by non-phospho peptides"), ncol = 2)
 ```
@@ -343,11 +341,11 @@ nbf_tm_rep_df <- out_nbf_df %>%
   dplyr::select(gene_name, replicate, meltPoint) %>% 
   spread(replicate, meltPoint)
 
-pm <- ggpairs(nbf_tm_rep_df, 2:6,
+pm <- GGally::ggpairs(nbf_tm_rep_df, 2:6,
         upper = "blank", diag = NULL,
         lower = list(continuous = wrap(lowerFn)))
 
-ggmatrix(list(pm[2, 1], NULL, NULL, NULL,
+GGally::ggmatrix(list(pm[2, 1], NULL, NULL, NULL,
               pm[3, 1], pm[3,2], NULL, NULL,
               pm[4, 1], pm[4,2], pm[4,3], NULL,
               pm[5, 1], pm[5,2], pm[5,3], pm[5,4]), 4, 4,
@@ -371,11 +369,11 @@ nbf_tm_rep_nn_df <- out_nbf_nn_df %>%
   spread(replicate, meltPoint)
 
 
-pm_nn <- ggpairs(nbf_tm_rep_nn_df, 2:6,
+pm_nn <- GGally::ggpairs(nbf_tm_rep_nn_df, 2:6,
         upper = "blank", diag = NULL,
         lower = list(continuous = wrap(lowerFn)))
 
-ggmatrix(list(pm_nn[2, 1], NULL, NULL, NULL,
+GGally::ggmatrix(list(pm_nn[2, 1], NULL, NULL, NULL,
               pm_nn[3, 1], pm_nn[3,2], NULL, NULL,
               pm_nn[4, 1], pm_nn[4,2], pm_nn[4,3], NULL,
               pm_nn[5, 1], pm_nn[5,2], pm_nn[5,3], pm_nn[5,4]), 4, 4,
@@ -403,11 +401,11 @@ phospho_tm_rep_df <- out_phospho_df %>%
   dplyr::select(gene_name, sequence, mod_sequence, phospho_site_STY, replicate, meltPoint) %>% 
   spread(replicate, meltPoint)
 
-pm_phospho <- ggpairs(phospho_tm_rep_df, 5:9,
+pm_phospho <- GGally::ggpairs(phospho_tm_rep_df, 5:9,
         upper = "blank", diag = NULL,
         lower = list(continuous = wrap(lowerFn)))
 
-ggmatrix(list(pm_phospho[2, 1], NULL, NULL, NULL,
+GGally::ggmatrix(list(pm_phospho[2, 1], NULL, NULL, NULL,
               pm_phospho[3, 1], pm_phospho[3,2], NULL, NULL,
               pm_phospho[4, 1], pm_phospho[4,2], pm_phospho[4,3], NULL,
               pm_phospho[5, 1], pm_phospho[5,2], pm_phospho[5,3], pm_phospho[5,4]), 4, 4,
@@ -436,11 +434,11 @@ phospho_tm_rep_nn_df <- out_phospho_nn_df %>%
                 phospho_site_STY, replicate, meltPoint) %>% 
   spread(replicate, meltPoint)
 
-pm_phospho_nn <- ggpairs(phospho_tm_rep_nn_df, 5:9,
+pm_phospho_nn <- GGally::ggpairs(phospho_tm_rep_nn_df, 5:9,
         upper = "blank", diag = NULL,
         lower = list(continuous = wrap(lowerFn)))
 
-ggmatrix(list(pm_phospho_nn[2, 1], NULL, NULL, NULL,
+GGally::ggmatrix(list(pm_phospho_nn[2, 1], NULL, NULL, NULL,
               pm_phospho_nn[3, 1], pm_phospho_nn[3,2], NULL, NULL,
               pm_phospho_nn[4, 1], pm_phospho_nn[4,2], pm_phospho_nn[4,3], NULL,
               pm_phospho_nn[5, 1], pm_phospho_nn[5,2], pm_phospho_nn[5,3], pm_phospho_nn[5,4]), 4, 4,
@@ -754,10 +752,10 @@ p_1f <- plotDiffPhosphoMeltcurve(
 
 ```{r, eval=FALSE}
 # assemble full figure
-plot_grid(
-  plot_grid(p_1a, p_1b, p_1c, 
+cowplot::plot_grid(
+  cowplot::plot_grid(p_1a, p_1b, p_1c, 
          labels = c("a", "b", "c"), ncol = 3, rel_widths = c(0.3, 0.3, 0.3)),
-  plot_grid(p_1d, p_1e, p_1f, labels = c("d", "e", "f"), 
+  cowplot::plot_grid(p_1d, p_1e, p_1f, labels = c("d", "e", "f"), 
             ncol = 3, rel_widths = c(0.3, 0.3, 0.3)),
   ncol = 1
 )
