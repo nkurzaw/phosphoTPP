@@ -34,6 +34,21 @@ cfg_tab %>% dplyr::select(-Path)
 
 ```
 
+```{r}
+# set plotting sizes
+anno_size <- 2
+pval_size <- 2
+rsq_size <- 2
+
+# define plotting theme
+theme_paper <- 
+  theme(axis.title = element_text(size = 8),
+        axis.text = element_text(size = 6),
+        legend.text = element_text(size = 6),
+        title = element_text(size = 9))
+```
+
+
 ```{r, eval=FALSE}
 temperature_anno <- cfg_tab %>%
   dplyr::select(matches('[0-9]{3}')) %>%
