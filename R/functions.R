@@ -67,7 +67,8 @@ fitMeltcurveModelAndEval <- function(df, curve_func = drc::LL.4(fixed = c(NA, NA
 #' @param seq vector of characters with protein sequence 
 #' corresponding to gene names
 #' @export
-getPhosphoSiteId <- function(gene_name, string, seq){
+getPhosphoSiteId <- function(gene_name, string, seq, rm_pattern = "(ox)"){
+    string <- gsub(rm_pattern, "", string)
     seq_match <- str_locate(seq, gsub("[p,_]", "", string))[1]
     ids_mapped <- str_locate_all(pattern = "p", string = string)[[1]][,1]
     corrected_ids <- seq_match + ids_mapped - seq_len(length(ids_mapped)) -1
