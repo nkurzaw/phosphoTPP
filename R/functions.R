@@ -66,6 +66,8 @@ fitMeltcurveModelAndEval <- function(df, curve_func = drc::LL.4(fixed = c(NA, NA
 #' peptide sequence with indicated phosphosite "p"
 #' @param seq vector of characters with protein sequence 
 #' corresponding to gene names
+#' @param rm_pattern character string to be removed from
+#' modified sequence string
 #' @export
 getPhosphoSiteId <- function(gene_name, string, seq, rm_pattern = "(ox)"){
     string <- gsub(rm_pattern, "", string)

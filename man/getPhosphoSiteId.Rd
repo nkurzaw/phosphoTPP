@@ -14,6 +14,9 @@ peptide sequence with indicated phosphosite "p"}
 
 \item{seq}{vector of characters with protein sequence 
 corresponding to gene names}
+
+\item{rm_pattern}{character string to be removed from
+modified sequence string}
 }
 \description{
 Create phosphosite id / Gene_pSite
