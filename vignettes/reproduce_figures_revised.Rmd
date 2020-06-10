@@ -1,0 +1,886 @@
+---
+title: "Analysis of the phosphoTPP dataset by Potel et al."
+author: "Nils Kurzawa"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: BiocStyle::pdf_document
+bibliography: references.bib
+vignette: >
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteIndexEntry{Analysis of the phosphoTPP dataset by Potel et al.}
+  %VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+reRunFitting <- FALSE
+exportPath <- "."
+```
+
+# Introduction
+
+This vignette illustrates the analysis of the phosphoTPP dataset by @potel_2020 and compares it to the one by @huang_2019.
+
+# Step-by-step walk through the analysis
+
+## Download of required data sets
+
+The supplementary tables `41592_2019_499_MOESM3_ESM.xlsx` and `41592_2019_499_MOESM4_ESM.xlsx` by @huang_2019 can be downloaded from the journal website: https://www.nature.com/articles/s41592-019-0499-3#Sec26 .
+
+The supplementary tables `56035_2_data_set_478471_pxb8gk.xlsx` and `56035_2_data_set_478475_pxb8l1-tableS3.xlsx` by @ochoa_2020 can also be downloaded from the respective journal website: https://www.nature.com/articles/s41587-019-0344-3#Sec30 .
+
+The processed data by @potel_2020 can be downloaded from Mendeley: LINK TO BE INSERTED
+
+## Setup
+
+Install the `phosphoTPP` package from github
+```{r eval=FALSE}
+if (!requireNamespace("devtools", quietly = TRUE))
+    install.packages("devtools")
+devtools::install_github("nkurzaw/phosphoTPP")
+```
+
+Set some plotting options
+```{r}
+# set plotting sizes
+anno_size <- 2
+pval_size <- 2
+rsq_size <- 2
+
+# define plotting theme
+theme_paper <- 
+  theme(axis.title = element_text(size = 8),
+        axis.text = element_text(size = 6),
+        legend.text = element_text(size = 6),
+        title = element_text(size = 9))
+```
+
+We then load the required libraries
+```{r, warning=FALSE, message=FALSE}
+library(phosphoTPP)
+library(dplyr)
+library(tidyr)
+library(GGally)
+library(ggpmisc)
+```
+
+And we set the thresholds for filtering for high-quality peptide identifications and quantifications and the filtering criteria for melting curves.
+```{r}
+# set thresholds for quality filtering
+s2i_thres <-  0.5
+p2t_thres <-  4
+mascot_score_thres <- 20
+fdr_at_score_thres <- 0.01
+r2_thres <- 0.8
+plateau_thres <- 0.2
+```
+
+Load the config table which tells us which TMT channels were used for which temperature treatment
+```{r}
+cfg_tab <- readxl::read_xlsx(file.path("../dat", "TPP-TR_config_phospho.xlsx"))
+cfg_tab
+```
+
+```{r, eval=FALSE}
+temperature_anno <- cfg_tab %>%
+  dplyr::select(matches('[0-9]{3}')) %>%
+  gather(key, temperature) %>%
+  mutate(channel = paste("sig", key, sep = "_")) %>% 
+  mutate(fc_channel = paste("rel_fc", key, sep = "_"))
+
+temperature_anno_prot <- cfg_tab  %>%
+  dplyr::select(matches('[0-9]{3}')) %>%
+  gather(key, temperature) %>%
+  mutate(channel = paste("signal_sum", key, sep = "_")) %>% 
+  mutate(fc_channel = paste("rel_fc", key, sep = "_"))
+```
+
+```{r, eval=FALSE}
+# read in lists of phospho and nbt protein and peptides tables per replicate
+phospho_protein_files <- list.files("../dat", pattern = 'phospho.+protein', full.names = TRUE)
+phospho_protein_files
+```
+
+```{r, eval=FALSE}
+nbf_protein_files <- list.files("../dat", pattern = 'NBF.+protein', full.names = TRUE)
+nbf_protein_files
+```
+
+```{r, eval=FALSE}
+phospho_peptide_files <- list.files("../dat", pattern = 'phospho.+peptide.+txt', full.names = TRUE)
+phospho_peptide_files
+```
+
+```{r, eval=FALSE}
+phosho_mxq_peptide_files <- list.files("../dat", pattern = 'pTPP.+txt', full.names = TRUE)
+phosho_mxq_peptide_files
+```
+
+```{r, eval=FALSE}
+nbf_peptide_files <- list.files("../dat", pattern = 'NBF.+peptide', full.names = TRUE)
+nbf_peptide_files
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+# read data files into lists of replicates
+phospho_protein_tabs <- lapply(seq_len(length(phospho_protein_files)), function(file_i){
+  read_delim(phospho_protein_files[file_i], delim = "\t") %>% 
+    mutate(replicate = file_i)
+})
+
+nbf_protein_tabs <- lapply(seq_len(length(nbf_protein_files)), function(file_i){
+  read_delim(nbf_protein_files[file_i], delim = "\t") %>% 
+    mutate(replicate = file_i)
+})
+
+phospho_peptide_tabs <- lapply(seq_len(length(phospho_peptide_files)), function(file_i){
+  ibq_tab <- read_delim(phospho_peptide_files[file_i], delim = "\t") %>% 
+    filter_at(vars(starts_with("sig_")), all_vars(!is.na(.))) 
+  mxq_tab <- read_delim(phosho_mxq_peptide_files[file_i], delim = "\t")
+  
+  combined_tab <- left_join(
+  ibq_tab %>% dplyr::select(protein_id, sequence, modifications,
+                            matches("sig_"), s2i, p2t, msms_id),
+  mxq_tab %>% dplyr::select(protein_id_mxq = Proteins, sequence = Sequence, msms_id = `MS/MS scan number`,
+                            mod_sequence = `Modified sequence`, phospho_prob = `Phospho (STY) Probabilities`,
+                            phospho_score_diff = `Phospho (STY) Score Diffs`, phospho_site_STY = `Phospho (STY)`),
+  by = c("sequence", "msms_id")) %>%
+  filter(!is.na(protein_id_mxq)) %>%
+  group_by(sequence, msms_id) %>%
+  filter(!duplicated(mod_sequence)) %>%
+  ungroup %>%
+  filter(getProb(phospho_prob)) %>%
+  filter(p2t >= p2t_thres, s2i >= s2i_thres) %>% 
+  mutate(replicate = file_i) %>% 
+    mutate(rel_fc_126 = sig_126 / sig_126,
+           rel_fc_127L = sig_127L / sig_126,
+           rel_fc_127H = sig_127H / sig_126,
+           rel_fc_128L = sig_128L / sig_126,
+           rel_fc_128H = sig_128H / sig_126,
+           rel_fc_129L = sig_129L / sig_126,
+           rel_fc_129H = sig_129H / sig_126,
+           rel_fc_130L = sig_130L / sig_126,
+           rel_fc_130H = sig_130H / sig_126,
+           rel_fc_131L = sig_131L / sig_126)
+  
+  return(combined_tab)
+})
+
+phospho_non_phospho_peptide_tabs <- lapply(seq_len(length(phospho_peptide_files)), function(file_i){
+  read_delim(phospho_peptide_files[file_i], delim = "\t") %>% 
+    filter(is_decoy == 0, score > mascot_score_thres & is_unique == 1, rank == 1,
+           fdr_at_score < fdr_at_score_thres, !is.na(modifications), 
+           grepl("TMT", modifications), !grepl("Phospho", modifications),
+           in_quantification_of_protein == 1, !grepl("##", protein_id)) %>%
+    filter_at(vars(starts_with("sig_")), all_vars(!is.na(.))) %>% 
+    mutate(replicate = file_i) %>% 
+    mutate(rel_fc_126 = sig_126 / sig_126,
+           rel_fc_127L = sig_127L / sig_126,
+           rel_fc_127H = sig_127H / sig_126,
+           rel_fc_128L = sig_128L / sig_126,
+           rel_fc_128H = sig_128H / sig_126,
+           rel_fc_129L = sig_129L / sig_126,
+           rel_fc_129H = sig_129H / sig_126,
+           rel_fc_130L = sig_130L / sig_126,
+           rel_fc_130H = sig_130H / sig_126,
+           rel_fc_131L = sig_131L / sig_126)
+})
+
+nbf_peptide_tabs <- lapply(seq_len(length(nbf_peptide_files)), function(file_i){
+  read_delim(nbf_peptide_files[file_i], delim = "\t") %>% 
+    filter(is_decoy == 0, score > mascot_score_thres & is_unique == 1, rank == 1,
+           fdr_at_score < fdr_at_score_thres, !is.na(modifications), 
+           grepl("TMT", modifications), 
+           in_quantification_of_protein == 1, !grepl("##", protein_id)) %>%
+    filter_at(vars(starts_with("sig_")), all_vars(!is.na(.))) %>% 
+    mutate(replicate = file_i) %>% 
+    mutate(rel_fc_126 = sig_126 / sig_126,
+           rel_fc_127L = sig_127L / sig_126,
+           rel_fc_127H = sig_127H / sig_126,
+           rel_fc_128L = sig_128L / sig_126,
+           rel_fc_128H = sig_128H / sig_126,
+           rel_fc_129L = sig_129L / sig_126,
+           rel_fc_129H = sig_129H / sig_126,
+           rel_fc_130L = sig_130L / sig_126,
+           rel_fc_130H = sig_130H / sig_126,
+           rel_fc_131L = sig_131L / sig_126)
+})
+
+```
+
+```{r, eval=FALSE}
+# compute normalization factors
+## first compute median normalization factors for shared non-phospho peptides between 
+## matching phospho-enriched and nbf samples
+n_rep <- min(length(phospho_peptide_files),
+             length(nbf_peptide_files))
+
+per_exp_norm_factors <- lapply(seq_len(n_rep), function(rep_i){
+  norm_in_df <- bind_rows(nbf_peptide_tabs[[rep_i]] %>% 
+    mutate(dataset_id = paste("nbf", replicate, sep = "_")),
+    phospho_non_phospho_peptide_tabs[[rep_i]] %>% 
+    mutate(dataset_id = paste("phospho", replicate, sep = "_")))
+  
+  nbf_peptide_norm_factors <- getNormFactors4Data(
+    pep_tab = norm_in_df, 
+    temperature_anno = temperature_anno,
+    filter_criteria = list("rel_fc_127H_low" = 0,
+                           "rel_fc_129H_low" = 0.4,
+                           "rel_fc_129H_high" = 0.6,
+                           "rel_fc_130H_low" = 0,
+                           "rel_fc_130H_high" = 0.3,
+                           "rel_fc_131L_low" = 0,
+                           "rel_fc_131L_high" = 0.2),
+    n_rep = 2)
+  
+  median_norm_factors <- nbf_peptide_norm_factors
+  out_df <- tibble(
+    temperature = nbf_peptide_norm_factors[[1]]$temperature,
+    median_norm_factor = nbf_peptide_norm_factors[[1]]$median_rel_value /
+      nbf_peptide_norm_factors[[2]]$median_rel_value)
+  
+  return(out_df)
+})
+
+per_exp_norm_factors
+```
+
+```{r, eval=FALSE}
+## now compute normalizing factors retrieved from curves fitted on hq data shared 
+## between different nbf replicates
+norm_in_df <- 
+  bind_rows(nbf_peptide_tabs) %>% 
+    mutate(dataset_id = paste("nbf", replicate, sep = "_"))#,
+
+nbf_peptide_norm_factors <- getNormFactors4Data(
+  pep_tab = norm_in_df, 
+  temperature_anno = temperature_anno,
+      filter_criteria = list("rel_fc_127H_low" = 1,
+                           "rel_fc_129H_low" = 0.4,
+                           "rel_fc_129H_high" = 0.6,
+                           "rel_fc_130H_low" = 0,
+                           "rel_fc_130H_high" = 0.3,
+                           "rel_fc_131L_low" = 0,
+                           "rel_fc_131L_high" = 0.2),
+  n_rep = n_rep)
+
+nbf_peptide_norm_factors
+```
+
+```{r, eval=FALSE}
+# retrieve one table of per normalized nbf/phospho peptide fold changes
+# and compare to non-normalized one
+nbf_peptide_filtered_not_norm <- bind_rows(lapply(seq_len(length(nbf_peptide_tabs)),
+                                       function(tab_i){
+  nbf_peptide_tabs[[tab_i]] %>%
+    dplyr::select(protein_id, sequence, modifications,
+                  matches("rel_fc_"), replicate, score) %>%
+    gather(key, value, -protein_id, -sequence, -modifications,
+           -replicate, -score) %>%
+    group_by(protein_id, sequence, replicate, modifications, key) %>%
+    filter(score == max(score)) %>%
+    left_join(temperature_anno, by = c("key" = "fc_channel")) %>%
+    mutate(rel_value = value * 1) %>% 
+    left_join(nbf_protein_tabs[[tab_i]] %>% dplyr::select(protein_id, gene_name),
+              by = c("protein_id")) 
+}))
+
+nbf_peptide_filtered <- bind_rows(lapply(seq_len(length(nbf_peptide_tabs)),
+                                       function(tab_i){
+  nbf_peptide_tabs[[tab_i]] %>%
+    dplyr::select(protein_id, sequence, modifications,
+                  matches("rel_fc_"), replicate, score) %>%
+    gather(key, value, -protein_id, -sequence, -modifications,
+           -replicate, -score) %>%
+    group_by(protein_id, sequence, replicate, modifications, key) %>%
+    filter(score == max(score)) %>%
+    left_join(temperature_anno, by = c("key" = "fc_channel")) %>%
+    left_join(nbf_peptide_norm_factors[[tab_i]],
+              by = "temperature") %>% 
+    mutate(rel_value = value * norm_factor) %>% 
+    left_join(nbf_protein_tabs[[tab_i]] %>% dplyr::select(protein_id, gene_name),
+              by = c("protein_id")) 
+}))
+
+phospho_peptide_tab_filtered_not_norm <- bind_rows(lapply(seq_len(length(phospho_peptide_tabs)), function(tab_i){
+  phospho_peptide_tabs[[tab_i]] %>%
+    dplyr::select(-matches("sig_")) %>% 
+    gather(key, value, matches("rel_fc_")) %>%
+    group_by(protein_id, sequence, mod_sequence, phospho_site_STY, 
+             replicate, key) %>%
+    summarise(value = mean(value, na.rm = TRUE),
+              mean_s2i = mean(s2i, na.rm = TRUE),
+              mean_p2t = mean(p2t, na.rm = TRUE)) %>%
+    ungroup %>%
+    left_join(temperature_anno %>% dplyr::select(-key),
+              by = c("key" = "fc_channel")) %>%
+    mutate(rel_value = value * 1) %>%
+    left_join(phospho_protein_tabs[[tab_i]] %>% 
+                dplyr::select(protein_id, gene_name),
+              by = c("protein_id")) %>%
+    filter(!grepl("##", protein_id))
+}))
+
+phospho_peptide_tab_filtered <- bind_rows(lapply(seq_len(length(phospho_peptide_tabs)), function(tab_i){
+  phospho_peptide_tabs[[tab_i]] %>%
+    dplyr::select(-matches("sig_")) %>% 
+    gather(key, value, matches("rel_fc_")) %>%
+    group_by(protein_id, sequence, mod_sequence, phospho_site_STY, 
+             replicate, key) %>%
+    summarise(value = mean(value, na.rm = TRUE),
+              mean_s2i = mean(s2i, na.rm = TRUE),
+              mean_p2t = mean(p2t, na.rm = TRUE)) %>%
+    ungroup %>%
+    left_join(temperature_anno %>% dplyr::select(-key),
+              by = c("key" = "fc_channel")) %>%
+    left_join(per_exp_norm_factors[[tab_i]],
+              by = "temperature") %>% 
+    left_join(nbf_peptide_norm_factors[[tab_i]],
+              by = "temperature") %>% 
+    mutate(rel_value = value * median_norm_factor * norm_factor) %>%
+    left_join(phospho_protein_tabs[[tab_i]] %>% 
+                dplyr::select(protein_id, gene_name),
+              by = c("protein_id")) %>%
+    filter(!grepl("##", protein_id))
+}))
+
+p_qc1_1 <- nbf_peptide_filtered_not_norm %>% 
+  ggplot(aes(temperature, rel_value)) + 
+  geom_boxplot(aes(group = temperature)) + 
+  facet_wrap(~replicate) + 
+  coord_cartesian(ylim = c(0, 2.5))
+
+p_qc1_3 <- nbf_peptide_filtered %>% 
+  ggplot(aes(temperature, rel_value)) + 
+  geom_boxplot(aes(group = temperature)) + 
+  facet_wrap(~replicate) + 
+  coord_cartesian(ylim = c(0, 2.5))
+
+p_qc1_2 <- phospho_peptide_tab_filtered_not_norm %>% 
+  ggplot(aes(temperature, rel_value)) + 
+  geom_boxplot(aes(group = temperature)) + 
+  facet_wrap(~replicate) + 
+  coord_cartesian(ylim = c(0, 2.5))
+
+p_qc1_4 <- phospho_peptide_tab_filtered %>% 
+  ggplot(aes(temperature, rel_value)) + 
+  geom_boxplot(aes(group = temperature)) + 
+  facet_wrap(~replicate) + 
+  coord_cartesian(ylim = c(0, 2.5))
+
+cowplot::plot_grid(p_qc1_1 + ggtitle("raw nbf"), p_qc1_2 + ggtitle("raw phospho"), 
+          p_qc1_3 + ggtitle("curve-based norm nbf"),
+          p_qc1_4 + ggtitle("curve-based norm phospho, whith prior median norm by non-phospho peptides"), ncol = 2)
+```
+
+```{r, warning=FALSE, message=FALSE, eval=reRunFitting}
+# fit curves to nbf dataset
+out_nbf_df <- nbf_peptide_filtered %>% 
+  group_by(gene_name, replicate) %>%
+  do({
+    suppressWarnings(fitMeltcurveModelAndEval(df = .))
+  }) %>% 
+  ungroup
+```
+
+```{r eval=!reRunFitting, include=FALSE}
+out_nbf_df <- readRDS("../prerun/out_nbf_df.rds")
+```
+
+```{r}
+# filter for high quality fits
+nbf_tm_rep_df <- out_nbf_df %>% 
+  filter(rSq > r2_thres, plateau < plateau_thres) %>% 
+  dplyr::select(gene_name, replicate, meltPoint) %>% 
+  spread(replicate, meltPoint)
+
+pm <- GGally::ggpairs(nbf_tm_rep_df, 2:6,
+        upper = "blank", diag = NULL,
+        lower = list(continuous = GGally::wrap(lowerFn)))
+
+GGally::ggmatrix(list(pm[2, 1], NULL, NULL, NULL,
+              pm[3, 1], pm[3,2], NULL, NULL,
+              pm[4, 1], pm[4,2], pm[4,3], NULL,
+              pm[5, 1], pm[5,2], pm[5,3], pm[5,4]), 4, 4,
+         xAxisLabels = c("Tm rep1", "Tm rep2", "Tm rep3", "Tm rep4"),
+         yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
+```
+
+
+```{r, warning=FALSE, message=FALSE, eval=reRunFitting}
+# fit curves to not-normalized nbf dataset
+out_nbf_nn_df <- nbf_peptide_filtered_not_norm %>% 
+  group_by(gene_name, replicate) %>%
+  do({
+    suppressWarnings(fitMeltcurveModelAndEval(df = .))
+  }) %>% 
+  ungroup
+```
+
+```{r eval=!reRunFitting, include=FALSE}
+out_nbf_nn_df <- readRDS("../prerun/out_nbf_nn_df.rds")
+```
+
+```{r}
+# filter for high quality fits
+nbf_tm_rep_nn_df <- out_nbf_nn_df %>% 
+  filter(rSq > r2_thres, plateau < plateau_thres) %>% 
+  dplyr::select(gene_name, replicate, meltPoint) %>% 
+  spread(replicate, meltPoint)
+
+
+pm_nn <- ggpairs(nbf_tm_rep_nn_df, 2:6,
+        upper = "blank", diag = NULL,
+        lower = list(continuous = wrap(lowerFn)))
+
+ggmatrix(list(pm_nn[2, 1], NULL, NULL, NULL,
+              pm_nn[3, 1], pm_nn[3,2], NULL, NULL,
+              pm_nn[4, 1], pm_nn[4,2], pm_nn[4,3], NULL,
+              pm_nn[5, 1], pm_nn[5,2], pm_nn[5,3], pm_nn[5,4]), 4, 4,
+         xAxisLabels = c("Tm rep1", "Tm rep2", "Tm rep3", "Tm rep4"),
+         yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
+```
+
+```{r, warning=FALSE, message=FALSE, eval=reRunFitting}
+# fit phospho peptide melting curves
+out_phospho_df <- phospho_peptide_tab_filtered %>%
+  dplyr::select(protein_id, gene_name, sequence, 
+                mod_sequence, mean_s2i, mean_p2t,
+                phospho_site_STY, replicate, 
+                rel_value, temperature) %>%
+  group_by(protein_id, gene_name, sequence, 
+           mod_sequence, mean_s2i, mean_p2t,
+           phospho_site_STY, replicate) %>%
+  do({
+    suppressWarnings(fitMeltcurveModelAndEval(df = .))
+  }) %>% 
+  ungroup
+```
+
+```{r eval=!reRunFitting, include=FALSE}
+out_phospho_df <- readRDS("../prerun/out_phospho_df.rds")
+```
+
+
+```{r}
+phospho_tm_rep_df <- out_phospho_df %>% 
+  filter(rSq > r2_thres, plateau < plateau_thres) %>% 
+  dplyr::select(gene_name, sequence, mod_sequence, phospho_site_STY, replicate, meltPoint) %>% 
+  spread(replicate, meltPoint)
+
+pm_phospho <- ggpairs(phospho_tm_rep_df, 5:9,
+        upper = "blank", diag = NULL,
+        lower = list(continuous = wrap(lowerFn)))
+
+ggmatrix(list(pm_phospho[2, 1], NULL, NULL, NULL,
+              pm_phospho[3, 1], pm_phospho[3,2], NULL, NULL,
+              pm_phospho[4, 1], pm_phospho[4,2], pm_phospho[4,3], NULL,
+              pm_phospho[5, 1], pm_phospho[5,2], pm_phospho[5,3], pm_phospho[5,4]), 4, 4,
+         xAxisLabels = c("Tm rep1", "Tm rep2", "Tm rep3", "Tm rep4"),
+         yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
+```
+
+```{r, warning=FALSE, message=FALSE, eval=FALSE}
+# fit non-norm phospho peptide melting curves
+out_phospho_nn_df <- phospho_peptide_tab_filtered_not_norm %>%
+  dplyr::select(protein_id, gene_name, sequence, 
+                mod_sequence, mean_s2i, mean_p2t,
+                phospho_site_STY, replicate, 
+                rel_value, temperature) %>%
+  group_by(protein_id, gene_name, sequence, 
+           mod_sequence, mean_s2i, mean_p2t,
+           phospho_site_STY, replicate) %>%
+  do({
+    suppressWarnings(fitMeltcurveModelAndEval(df = .))
+  }) %>% 
+  ungroup
+```
+
+```{r eval=!reRunFitting, include=FALSE}
+out_phospho_nn_df <- readRDS("../prerun/out_phospho_nn_df.rds")
+```
+
+
+```{r}
+phospho_tm_rep_nn_df <- out_phospho_nn_df %>% 
+  filter(rSq > r2_thres, plateau < plateau_thres) %>% 
+  dplyr::select(gene_name, sequence, mod_sequence, 
+                phospho_site_STY, replicate, meltPoint) %>% 
+  spread(replicate, meltPoint)
+
+pm_phospho_nn <- GGally::ggpairs(phospho_tm_rep_nn_df, 5:9,
+        upper = "blank", diag = NULL,
+        lower = list(continuous = wrap(lowerFn)))
+
+GGally::ggmatrix(list(pm_phospho_nn[2, 1], NULL, NULL, NULL,
+              pm_phospho_nn[3, 1], pm_phospho_nn[3,2], NULL, NULL,
+              pm_phospho_nn[4, 1], pm_phospho_nn[4,2], pm_phospho_nn[4,3], NULL,
+              pm_phospho_nn[5, 1], pm_phospho_nn[5,2], pm_phospho_nn[5,3], pm_phospho_nn[5,4]), 4, 4,
+         xAxisLabels = c("Tm rep1", "Tm rep2", "Tm rep3", "Tm rep4"),
+         yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
+```
+
+```{r, eval=FALSE}
+# create scatterplot of phospho and nbf Tm with non-normalized data
+phospho_combo_nn_df <- left_join(
+  out_phospho_nn_df %>%
+    filter(rSq > r2_thres, plateau < plateau_thres) %>% 
+    group_by(protein_id, gene_name, sequence, 
+             mod_sequence, phospho_site_STY) %>% 
+    summarise(meltPoint = mean(meltPoint, na.rm = TRUE),
+              plateau = mean(plateau, na.rm = TRUE),
+              rSq = mean(rSq, na.rm = TRUE),
+              n_rep = n()) %>%
+    ungroup,
+  out_nbf_nn_df %>% 
+    group_by(gene_name) %>% 
+    filter(rSq > r2_thres, plateau < plateau_thres) %>% 
+    summarise(meltPoint = mean(meltPoint, na.rm = TRUE),
+              plateau = mean(plateau, na.rm = TRUE),
+              rSq = mean(rSq, na.rm = TRUE),
+              n_rep = n()) %>%
+    ungroup, 
+  by = c("gene_name"), 
+  suffix = c("_phospho", "_flowThrough"))
+
+ggplot(phospho_combo_nn_df,
+       aes(meltPoint_flowThrough, meltPoint_phospho)) +
+  geom_point(alpha = 0.25, shape = 16) +
+  geom_line(aes(x,y), data = tibble(x = 40:77.5, y = 40:77.5),
+            color = "darkgray") +
+  ggpmisc::stat_poly_eq(formula = y ~ x, parse = TRUE) +
+  coord_cartesian(xlim = c(40, 77.5), ylim = c(40, 77.5)) +
+  labs(x = expression('Tm[nbf] ('*~degree*C*')'), 
+       y = expression('Tm[phospho] ('*~degree*C*')')) +
+  theme_bw()
+```
+
+
+Now we join our results of the melting curve fitting for phosphopeptides and unmodified proteins and apply the test for differential melting points established by @savitski_2014
+```{r, eval=FALSE}
+nbf_tm_rep_fil <- out_nbf_df %>% 
+  filter(rSq > r2_thres, plateau < plateau_thres) %>% 
+  group_by(gene_name) %>% 
+  filter(n() > 2) %>% 
+  ungroup %>% 
+  dplyr::select(gene_name, replicate, meltPoint) %>% 
+  spread(replicate, meltPoint)
+
+phospho_tm_rep_fil <- out_phospho_df %>% 
+  filter(rSq > r2_thres, plateau < plateau_thres) %>% 
+  group_by(gene_name, sequence, mod_sequence, phospho_site_STY) %>% 
+  filter(n() > 2) %>% 
+  ungroup() %>% 
+  dplyr::select(gene_name, sequence, mod_sequence, phospho_site_STY, replicate, meltPoint) %>% 
+  spread(replicate, meltPoint)
+
+combo_tm_df <- left_join(phospho_tm_rep_fil, nbf_tm_rep_fil,
+          by = "gene_name") %>% 
+  rowwise() %>% 
+  mutate(id = paste(gene_name, mod_sequence, phospho_site_STY, sep = "_")) %>% 
+  ungroup()
+
+combo_mean_tm_significant_df <- combo_tm_df %>%
+  rowwise() %>%
+  mutate(mean_phospho = mean(c(`1.x`, `2.x`, `3.x`, `4.x`, `5.x`), na.rm = TRUE),
+         mean_nbf = mean(c(`1.y`, `2.y`, `3.y`, `4.y`, `5.y`), na.rm = TRUE)) %>%
+  ungroup() %>%
+  rowwise() %>%
+  mutate(delta_meltPoint_1 = `1.y` - `1.x`,
+         delta_meltPoint_2 = `2.y` - `2.x`,
+         delta_meltPoint_3 = `3.y` - `3.x`,
+         delta_meltPoint_4 = `4.y` - `4.x`,
+         delta_meltPoint_5 = `5.y` - `5.x`) %>%
+  ungroup() %>%
+  mutate(delta_meltPoint_1_scaled = scale(delta_meltPoint_1),
+         delta_meltPoint_2_scaled = scale(delta_meltPoint_2),
+         delta_meltPoint_3_scaled = scale(delta_meltPoint_3),
+         delta_meltPoint_4_scaled = scale(delta_meltPoint_4),
+         delta_meltPoint_5_scaled = scale(delta_meltPoint_5)) %>%
+  mutate(p_value_1 = 1 - pnorm(abs(delta_meltPoint_1_scaled)),
+         p_value_2 = 1 - pnorm(abs(delta_meltPoint_2_scaled)),
+         p_value_3 = 1 - pnorm(abs(delta_meltPoint_3_scaled)),
+         p_value_4 = 1 - pnorm(abs(delta_meltPoint_4_scaled)),
+         p_value_5 = 1 - pnorm(abs(delta_meltPoint_5_scaled))) %>%
+  ungroup() %>%
+  mutate(p_adj_1 = p.adjust(p_value_1, method = "BH"),
+         p_adj_2 = p.adjust(p_value_2, method = "BH"),
+         p_adj_3 = p.adjust(p_value_3, method = "BH"),
+         p_adj_4 = p.adjust(p_value_4, method = "BH"),
+         p_adj_5 = p.adjust(p_value_5, method = "BH")) %>%
+  rowwise() %>%
+  mutate(significant = countAtLeast(x = c(p_adj_1, p_adj_2, p_adj_3, p_adj_4, p_adj_5),
+                                    val_with_sign =
+                                      c(delta_meltPoint_1_scaled,
+                                        delta_meltPoint_2_scaled,
+                                        delta_meltPoint_3_scaled,
+                                        delta_meltPoint_4_scaled,
+                                        delta_meltPoint_5_scaled),
+                                    min_n =  2)) %>%
+  ungroup()
+```
+
+To maximize overlap with @huang_2019 , we here choose gene names overlapping their data in case there are ambiguous gene names 
+```{r}
+## load Huang et al. phospho dataset
+huang_phospho_tab <- readxl::read_xlsx(file.path("../dat", "41592_2019_499_MOESM4_ESM.xlsx"), skip = 2)
+
+colnames(huang_phospho_tab)[15] <- "AveragePhosphoTm"
+colnames(huang_phospho_tab)[21] <- "deltaTmPval"
+colnames(huang_phospho_tab)[22] <- "HighQuality"
+
+huang_phospho_hq <- filter(
+  huang_phospho_tab,
+  HighQuality == "Yes")
+
+combo_mean_tm_fcs_choosen_gene_names <- 
+  chooseCoherentGeneNames(in_df = combo_mean_tm_significant_df,
+                          their_data = huang_phospho_tab)
+  
+```
+
+Then we annotated the phosphorylation sites we found by mapping back the modified sequence to protein sequences obtained from Uniprot
+
+```{r}
+uniprot_seq_df <- read_csv("../dat/uniprot_seq_df.csv")
+
+combo_mean_tm_pSite_anno <- left_join(
+  combo_mean_tm_fcs_choosen_gene_names, 
+  uniprot_seq_df,
+  by = "gene_name") %>% 
+  rowwise() %>% 
+  mutate(Gene_pSite = getPhosphoSiteId(
+    gene_name = gene_name, string = mod_sequence, seq = seq)) %>% 
+  ungroup %>% 
+  mutate(significant_huang = Gene_pSite %in% 
+           filter(huang_phospho_hq, as.numeric(deltaTmPval) < 0.05)$Gene_pSite)
+
+p_1b <- ggplot(combo_mean_tm_pSite_anno, aes(mean_nbf, mean_phospho)) +
+  geom_point(shape = 16, alpha = 0.2, size = 0.5) +
+  geom_line(aes(x,y), data = tibble(x = 40:65, y = 40:65),
+            color = "darkgray", size = 0.25) +
+  geom_point(data = filter(combo_mean_tm_pSite_anno, significant),
+             color = "#b2182b",
+             shape = 16, size = 0.5) +
+  geom_point(data = filter(combo_mean_tm_pSite_anno, significant_huang),
+             color = "#1f78b4",
+             shape = 16, size = 0.5) +
+  geom_point(data = filter(combo_mean_tm_pSite_anno, significant_huang, significant),
+             color = "#ff7f00",
+             shape = 16, size = 0.5) +
+  coord_cartesian(xlim = c(40, 65), ylim = c(40, 65)) +
+  ggpmisc::stat_poly_eq(formula = y ~ x, parse = TRUE, size = rsq_size) +
+  labs(x = expression('T'[m]^unmodified* ' '* '('*~degree*C*')'), 
+       y = expression('T'[m]^phospho* ' '* '('*~degree*C*')')) +
+  theme_bw() +
+  theme_paper
+```
+
+Now, we load the data on machine learning-derived functional scores for phosphosites by @ochoa_2020 and join them to our dataset
+
+```{r}
+# annotate ochoa et al. functional scores
+ochoa_et_al_anno <- readxl::read_xlsx(file.path("../dat", "56035_2_data_set_478471_pxb8gk.xlsx"))
+ochoa_et_al_mapping <- read_delim(file.path("../dat", "ochoa_mapping.txt"), delim = "\t")
+ochoa_et_al_func_anno <- readxl::read_xlsx(file.path("../dat", "56035_2_data_set_478475_pxb8l1-tableS3.xlsx"))
+
+ochoa_et_al_func_anno_psite <- left_join(
+  ochoa_et_al_func_anno,
+  ochoa_et_al_anno,
+  by = c("uniprot", "position")
+)
+
+ochoa_et_al_anno_fil <- left_join(
+  ochoa_et_al_func_anno_psite %>% dplyr::select(uniprot, position, residue, functional_score, is_disopred, isHotspot, isInterface),
+  ochoa_et_al_mapping %>% dplyr::select(uniprot = From, gene_name = To),
+  by = "uniprot") %>% 
+  mutate(Gene_pSite = paste0(gene_name, "_", "p", residue, position))
+
+combo_mean_tm_pSite_anno_functional_scores <- left_join(
+  combo_mean_tm_pSite_anno %>% 
+    rowwise() %>% mutate(mean_delta_meltPoint = mean(c(delta_meltPoint_1, delta_meltPoint_2, delta_meltPoint_3, 
+                                                       delta_meltPoint_4, delta_meltPoint_5), na.rm = TRUE)) %>% 
+    ungroup,
+  ochoa_et_al_anno_fil %>% na.omit %>% dplyr::select(Gene_pSite, functional_score, is_disopred, isHotspot, isInterface),
+  by = "Gene_pSite")
+
+```
+
+We join the functional scores also to the data by @huang_2019
+
+```{r}
+huang_raw_df <- readxl::read_xlsx(file.path("../dat", "41592_2019_499_MOESM3_ESM.xlsx"), skip = 2) 
+colnames(huang_raw_df)[14] <- "AverageBulkTm"
+
+huang_bulk <- huang_raw_df %>%
+  dplyr::select(uniprot_id = `Uniprot Accession`,
+                average_tm_nbf = AverageBulkTm) %>% 
+  mutate(average_tm_nbf = as.numeric(average_tm_nbf))
+
+huang_phospho_hq_potel_anno <- 
+  huang_phospho_hq %>% 
+  dplyr::select(uniprot_id = `Uniprot Accession`,
+                Gene_pSite, 
+                average_tm_phospho = AveragePhosphoTm,
+                p_value = deltaTmPval) %>% 
+  mutate(significant_potel = Gene_pSite %in% 
+           filter(combo_mean_tm_pSite_anno_functional_scores, significant)$Gene_pSite) %>% 
+  mutate(average_tm_phospho = as.numeric(average_tm_phospho),
+         p_value = as.numeric(p_value)) %>% 
+  left_join(huang_bulk, by = "uniprot_id")
+
+p_1a <- ggplot(huang_phospho_hq_potel_anno, aes(average_tm_nbf, average_tm_phospho)) +
+  geom_point(shape = 16, alpha = 0.2, size = 0.5) +
+  geom_line(aes(x,y), data = tibble(x = 40:65, y = 40:65),
+            color = "darkgray", size = 0.25) +
+  geom_point(data = filter(huang_phospho_hq_potel_anno, p_value < 0.05),
+             color = "#1f78b4", size = 0.5,
+             shape = 16) +
+  geom_point(data = filter(huang_phospho_hq_potel_anno, significant_potel),
+             color = "#b2182b", size = 0.5,
+             shape = 16) +
+  geom_point(data = filter(huang_phospho_hq_potel_anno, p_value < 0.05, significant_potel),
+             color = "#ff7f00", size = 0.5,
+             shape = 16) +
+  coord_cartesian(xlim = c(40, 65), ylim = c(40, 65)) +
+  ggpmisc::stat_poly_eq(formula = y ~ x, parse = TRUE, size = rsq_size) +
+  labs(x = expression('T'[m]^unmodified*' '* '('*~degree*C*')'), 
+       y = expression('T'[m]^phospho*' '* '('*~degree*C*')')) +
+  theme_bw() +
+  theme_paper
+```
+
+And now we visualize the distributions of functional scores for the significantly vs. non-significantly differently thermally shifted phosphosites for the results by @huang_2019 and @potel_2020 
+```{r}
+# ochoa functional score on Huang et al data
+huang_phospho_hq_functional_score <- left_join(
+  huang_phospho_hq %>% 
+    dplyr::select(Gene_pSite, average_deltaTm = AveragePhosphoTm,
+                  p_value = deltaTmPval) %>% 
+    mutate(average_deltaTm = as.numeric(average_deltaTm),
+           p_value = as.numeric(p_value)) %>% 
+    mutate(significant  =  (p_value < 0.05)),
+  ochoa_et_al_anno_fil %>% na.omit %>% dplyr::select(Gene_pSite, functional_score),
+  by = "Gene_pSite")
+
+# combine both datasets to save space for plot
+func_score_combo_df <- bind_rows(
+  filter(combo_mean_tm_pSite_anno_functional_scores, !is.na(functional_score)) %>% 
+    dplyr::select(Gene_pSite, significant, functional_score) %>% 
+    mutate(group = "This study"),
+  filter(huang_phospho_hq_functional_score, !is.na(functional_score)) %>% 
+    dplyr::select(Gene_pSite, significant, functional_score)%>% 
+    mutate(group = "Huang et al.")
+)
+
+p_1c <- ggplot(func_score_combo_df , aes(significant, functional_score)) +
+  geom_violin(aes(fill = significant), alpha = 0.75, color = NA) +
+  geom_boxplot(outlier.shape = NA, width = 0.25, alpha = 0.5) +
+  ggsignif::geom_signif(comparisons = list(c("TRUE", "FALSE")),
+                        textsize = anno_size, size = 0.25) +
+  geom_text(stat = "count", aes(label = ..count..), y = 0.01,
+            size = anno_size) +
+  scale_fill_manual(values = c("gray10", "gray70")) +
+  facet_wrap(~ group) +
+  labs(x = "found significantly de/stabilized", y = "functional score by Ochoa et al.") +
+  coord_cartesian(ylim = c(-0.1, 1.1)) +
+  theme_bw() +
+  theme(legend.position = "none", 
+        strip.text = element_text(size = 8)) +
+  theme_paper
+```
+
+We now plot examples melting curves showing significantly altered melting profiles in the phosphopeptide data compared to the unmodified proteins
+
+```{r}
+# examples from this study
+p_1d <- plotDiffPhosphoMeltcurve(
+  g_name = "LYN", p_seq = "_VIEDNEpYTAR_", 
+  nbf_df = nbf_peptide_filtered,
+  phospho_df = phospho_peptide_tab_filtered,
+  Gene_pSite = "LYN_pY397") +
+  theme_paper
+
+p_1e <- plotDiffPhosphoMeltcurve(
+  g_name = "LMNA", p_seq = "_SGAQASSpTPLpSPTR_", 
+  nbf_df = nbf_peptide_filtered,
+  phospho_df = phospho_peptide_tab_filtered,
+  Gene_pSite = "LMNA_pT19pS22") +
+  theme_paper
+
+p_1f <- plotDiffPhosphoMeltcurve(
+  g_name = "CARHSP1", p_seq = "_GNVVPpSPLPTRR_", 
+  nbf_df = nbf_peptide_filtered,
+  phospho_df = phospho_peptide_tab_filtered,
+  Gene_pSite = "CARHSP1_pS41") +
+  theme_paper
+
+```
+
+Finally, we combine all plots created above and plot them together
+```{r}
+# assemble full figure
+cowplot::plot_grid(
+  cowplot::plot_grid(p_1a, p_1b, p_1c, 
+         labels = c("a", "b", "c"), ncol = 3, rel_widths = c(0.3, 0.3, 0.3)),
+  cowplot::plot_grid(p_1d, p_1e, p_1f, labels = c("d", "e", "f"), 
+            ncol = 3, rel_widths = c(0.3, 0.3, 0.3)),
+  ncol = 1
+)
+
+```
+
+## Make output tables
+```{r eval=FALSE}
+supp1_tab <- phospho_peptide_tab_filtered %>% 
+    dplyr::select(gene_name, protein_id, 
+                  sequence, modifications,
+                  key, replicate, temperature) %>% 
+    unite(combo_var, c(key, replicate, temperature), 
+          sep = "_")
+
+write_csv(supp1_tab)
+
+supp2_tab <- nbf_peptide_filtered  %>% 
+    ungroup %>% 
+    dplyr::select(gene_name, protein_id, 
+                  sequence, modifications,
+                  score,
+                  key, replicate, temperature,
+                  value) %>% 
+    unite(combo_var, c(key, replicate, temperature), 
+          sep = "_") %>% 
+    spread(combo_var, value)
+
+write_csv(supp2_tab)
+```
+
+
+## Additonal comparisons of the two datasets
+
+```{r}
+delta_tm <- left_join(
+    combo_mean_tm_pSite_anno %>% 
+        dplyr::select(Gene_pSite, mean_delta_meltPoint),
+    huang_phospho_hq_potel_anno %>% 
+        mutate(huang_phospho_hq_potel_anno = average_tm_phospho - 
+                   average_tm_nbf) %>% 
+        dplyr::select(Gene_pSite, mean_delta_meltPoint_huang, p_value),
+    by = "Gene_pSite"
+) %>% 
+    na.omit()
+
+ggplot(delta_tm, aes(mean_delta_meltPoint_huang, mean_delta_meltPoint)) +
+    geom_point(alpha = 0.5) +
+    geom_point(color = "red", data = filter(delta_tm, p_value < 0.05)) +
+    geom_smooth(method = "lm") +
+    # ggrepel::geom_text_repel(
+    #     aes(label = Gene_pSite),
+    #     data = filter(delta_tm, p_value < 0.05,
+    #                   Gene_pSite %in% c("ANLN_pS54", "TPI1_pS58",
+    #                                     "RPRD2_pS1099", "BAG6_pS964pS973"))) +
+    labs(x = expression(Delta*' T'[m]^Potel*' '* '('*~degree*C*')'), 
+         y = expression(Delta* ' T'[m]^Huang*' '* '('*~degree*C*')')) +
+    theme_bw()
+```
+
+# References
