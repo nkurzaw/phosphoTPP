@@ -4,7 +4,7 @@
 \alias{getPhosphoSiteId}
 \title{Create phosphosite id / Gene_pSite}
 \usage{
-getPhosphoSiteId(gene_name, string, seq)
+getPhosphoSiteId(gene_name, string, seq, rm_pattern = "(ox)")
 }
 \arguments{
 \item{gene_name}{vector of charaters indicating gene names}

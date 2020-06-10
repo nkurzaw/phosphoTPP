@@ -4,10 +4,14 @@
 \alias{getNormFactors4Data}
 \title{Derive normalization factors for replicates}
 \usage{
-getNormFactors4Data(pep_tab, temperature_anno, n_rep,
-  filter_criteria = list(rel_fc_127H_low = 0, rel_fc_129H_low = 0.4,
-  rel_fc_129H_high = 0.6, rel_fc_130H_low = 0, rel_fc_130H_high = 0.3,
-  rel_fc_131L_low = 0, rel_fc_131L_high = 0.2))
+getNormFactors4Data(
+  pep_tab,
+  temperature_anno,
+  n_rep,
+  filter_criteria = list(rel_fc_127H_low = 0, rel_fc_129H_low = 0.4, rel_fc_129H_high =
+    0.6, rel_fc_130H_low = 0, rel_fc_130H_high = 0.3, rel_fc_131L_low = 0,
+    rel_fc_131L_high = 0.2)
+)
 }
 \arguments{
 \item{pep_tab}{data frame with information on qunatified peptides}

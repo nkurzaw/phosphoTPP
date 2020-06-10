@@ -4,8 +4,15 @@
 \alias{plotDiffPhosphoSpline}
 \title{Fit differentil melting curves fitted by Splines}
 \usage{
-plotDiffPhosphoSpline(g_name, p_seq, spline_df = 4,
-  predict_vec = seq(35, 70, by = 0.1), nbf_df, phospho_df, Gene_pSite)
+plotDiffPhosphoSpline(
+  g_name,
+  p_seq,
+  spline_df = 4,
+  predict_vec = seq(35, 70, by = 0.1),
+  nbf_df,
+  phospho_df,
+  Gene_pSite
+)
 }
 \arguments{
 \item{g_name}{gene name}

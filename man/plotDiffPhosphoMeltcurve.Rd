@@ -4,8 +4,15 @@
 \alias{plotDiffPhosphoMeltcurve}
 \title{Plot differential melting curves}
 \usage{
-plotDiffPhosphoMeltcurve(g_name, p_seq, predict_vec = seq(35, 70, by =
-  0.1), nbf_df, phospho_df, Gene_pSite, in_ylim = c(0, 1.25))
+plotDiffPhosphoMeltcurve(
+  g_name,
+  p_seq,
+  predict_vec = seq(35, 70, by = 0.1),
+  nbf_df,
+  phospho_df,
+  Gene_pSite,
+  in_ylim = c(0, 1.25)
+)
 }
 \arguments{
 \item{g_name}{gene name}
