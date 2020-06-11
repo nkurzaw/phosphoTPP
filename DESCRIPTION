@@ -12,5 +12,6 @@ Encoding: UTF-8
 VignetteBuilder: knitr
 LazyData: true
 RoxygenNote: 7.1.0
-Depends: R (>= 3.5.0), knitr, dplyr, tidyr, readr, readxl, ggplot2, drc
+Depends: R (>= 3.5.0), knitr, dplyr, tidyr, drc
+Imports: stringr, readr, readxl, ggplot2
 Suggests: cowplot, ggpmisc, splines, GGally

@@ -34,6 +34,7 @@ fitMeltcurve <- function(df, curve_func = drc::LL.4(fixed = c(NA, NA, 1, NA))){
 #' @param df data frame including the columns temperature and rel_value
 #' @param curve_func function of the drc package to be used for curve fitting
 #' default is drc::LL.4(fixed = c(NA, NA, 1, NA))
+#' @import drc
 #' @export
 fitMeltcurveModelAndEval <- function(df, curve_func = drc::LL.4(fixed = c(NA, NA, 1, NA))){
     h0_model <- lm(df$rel_value ~ 1)
@@ -68,6 +69,7 @@ fitMeltcurveModelAndEval <- function(df, curve_func = drc::LL.4(fixed = c(NA, NA
 #' corresponding to gene names
 #' @param rm_pattern character string to be removed from
 #' modified sequence string
+#' @import stringr
 #' @export
 getPhosphoSiteId <- function(gene_name, string, seq, rm_pattern = "(ox)"){
     string <- gsub(rm_pattern, "", string)
@@ -208,6 +210,7 @@ decideOnGeneName <- function(in_vec, ref_vec){
 #' Choose coherent gene names
 #' @param in_df input data frame with column 'gene_name'
 #' @param their_data reference data frame with column 'Gene_pSite'
+#' @import dplyr
 #' @export
 chooseCoherentGeneNames <- function(in_df, their_data){
     their_gene_names <- unique(gsub("_.+", "", their_data$Gene_pSite))
@@ -222,6 +225,7 @@ chooseCoherentGeneNames <- function(in_df, their_data){
 #' @param data data frame imported from ggpairs
 #' @param mapping variable imported from ggpairs
 #' @param dot.size size of geom_point
+#' @import ggplot2
 #' @export
 lowerFn <- function(data, mapping, dot.size) {
     p <- ggplot(data = data, mapping = mapping) +
@@ -255,6 +259,7 @@ countAtLeast <- function(x, val_with_sign, min_n = 2, thres = 0.1){
 #' @param phospho_df data frame of phosphopeptide quantitative data
 #' @param Gene_pSite phosphosite id to be displayed as title
 #' @param in_ylim limits for y-axis
+#' @import dplyr
 #' @export
 plotDiffPhosphoMeltcurve <- function(g_name, p_seq, 
                                      predict_vec = seq(35, 70, by = 0.1),
@@ -316,6 +321,8 @@ plotDiffPhosphoMeltcurve <- function(g_name, p_seq,
 #' @param nbf_df data frame of unmodified qunantitative data
 #' @param phospho_df data frame of phosphopeptide quantitative data
 #' @param Gene_pSite phosphosite id to be displayed as title
+#' @import ggplot2
+#' @import dplyr
 #' @export
 plotDiffPhosphoSpline <- function(g_name, p_seq, spline_df = 4,
                                   predict_vec = seq(35, 70, by = 0.1),
