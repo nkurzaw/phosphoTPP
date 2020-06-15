@@ -1056,7 +1056,7 @@ tan_hq_meltCurve_param_df <-
   dplyr::select(gene_name, tan_Tm = meltPoint)
 
 
-becher_cell_hela <- read_xlsx("dat/Becher-s2.0-S0092867418303854-mmc4-TableS4-HeLa_G1S.xlsx",
+becher_cell_hela <- read_xlsx("dat/1-s2.0-S0092867418303854-mmc4.xlsx",
                               sheet = 2) %>% 
   dplyr::select(gene_name, becher_cell_hela_mean_Tm = Tm.median) %>% 
   mutate(becher_cell_hela_mean_Tm = as.numeric(becher_cell_hela_mean_Tm))
