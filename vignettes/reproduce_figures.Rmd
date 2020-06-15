@@ -34,7 +34,7 @@ cfg_tab %>% dplyr::select(-Path)
 
 ```
 
-```{r}
+```{r, eval=FALSE}
 # set plotting sizes
 anno_size <- 2
 pval_size <- 2
