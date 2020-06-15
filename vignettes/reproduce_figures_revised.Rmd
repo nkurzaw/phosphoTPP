@@ -12,7 +12,6 @@ vignette: >
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 reRunFitting <- FALSE
-exportPath <- "."
 ```
 
 # Introduction
@@ -27,7 +26,9 @@ The supplementary tables `41592_2019_499_MOESM3_ESM.xlsx` and `41592_2019_499_MO
 
 The supplementary tables `56035_2_data_set_478471_pxb8gk.xlsx` and `56035_2_data_set_478475_pxb8l1-tableS3.xlsx` by @ochoa_2020 can also be downloaded from the respective journal website: https://www.nature.com/articles/s41587-019-0344-3#Sec30 .
 
-The processed data by @potel_2020 can be downloaded from Mendeley: LINK TO BE INSERTED
+The processed data by @potel_2020 and reprocessed data by @huang_2019 can be downloaded from Mendeley: https://data.mendeley.com/datasets/4vwzvxfcnd/3
+
+The table `1-s2.0-S0092867418303854-mmc4.xlsx` (used for supplementary figures comparing different TPP-TR experiments) can be downloaded from the respective journal website: https://www.sciencedirect.com/science/article/pii/S0092867418303854#app2
 
 All tables should be saved in the `dat` folder of the package.
 
@@ -454,11 +455,11 @@ combo_mean_tm_significant_df <- combo_tm_df %>%
          mean_nbf = mean(c(`1.y`, `2.y`, `3.y`, `4.y`, `5.y`), na.rm = TRUE)) %>%
   ungroup() %>%
   rowwise() %>%
-  mutate(delta_meltPoint_1 = `1.y` - `1.x`,
-         delta_meltPoint_2 = `2.y` - `2.x`,
-         delta_meltPoint_3 = `3.y` - `3.x`,
-         delta_meltPoint_4 = `4.y` - `4.x`,
-         delta_meltPoint_5 = `5.y` - `5.x`) %>%
+  mutate(delta_meltPoint_1 = `1.x` - `1.y`,
+         delta_meltPoint_2 = `2.x` - `2.y`,
+         delta_meltPoint_3 = `3.x` - `3.y`,
+         delta_meltPoint_4 = `4.x` - `4.y`,
+         delta_meltPoint_5 = `5.x` - `5.y`) %>%
   ungroup() %>%
   mutate(delta_meltPoint_1_scaled = scale(delta_meltPoint_1),
          delta_meltPoint_2_scaled = scale(delta_meltPoint_2),
@@ -695,38 +696,118 @@ cowplot::plot_grid(
             ncol = 3, rel_widths = c(0.3, 0.3, 0.3)),
   ncol = 1
 )
-
 ```
 
 ## Make output tables
 ```{r eval=FALSE}
-# supp1_tab <- phospho_peptide_tab_filtered %>% 
-#     dplyr::select(gene_name, protein_id, 
-#                   sequence, modifications,
-#                   key, replicate, temperature) %>% 
-#     unite(combo_var, c(key, replicate, temperature), 
-#           sep = "_")
-# 
-# write_csv(supp1_tab)
+supp1_tab <- phospho_peptide_tab_filtered %>%
+  dplyr::select(gene_name, protein_id,
+                sequence, mod_sequence,
+                phospho_site_STY, key, 
+                replicate, temperature,
+                rel_value) %>%
+  unite(combo_var, c(key, replicate, temperature),
+        sep = "_") %>% 
+  spread(combo_var, rel_value)
+
+write_csv(supp1_tab, path = "phosphoTPP-supplementary_data1-supplementary_table_phospho_peptide_fold_changes.csv")
 
 supp2_tab <- nbf_peptide_filtered  %>% 
     ungroup %>% 
     dplyr::select(gene_name, protein_id, 
                   sequence, modifications,
                   key, replicate, temperature,
-                  value) %>% 
+                  rel_value) %>% 
     unite(combo_var, c(key, replicate, temperature), 
           sep = "_") %>% 
     group_by(gene_name, protein_id, 
              sequence, modifications,
              combo_var) %>% 
-    summarize(value = mean(value, na.rm = TRUE)) %>% 
+    summarize(rel_value = mean(rel_value, na.rm = TRUE)) %>% 
     ungroup %>% 
-    spread(combo_var, value)
+    spread(combo_var, rel_value)
 
-write_csv(supp2_tab)
+write_csv(supp2_tab, path = "phosphoTPP-supplementary_data2-supplementary_table_non-modified_peptide_fold_changes.csv")
 
-#supp3_tab
+phospho_median_fc_df <- chooseCoherentGeneNames(
+  phospho_peptide_tab_filtered,
+  combo_mean_tm_pSite_anno_functional_scores) %>%
+  group_by(gene_name, 
+           mod_sequence,
+           key, temperature) %>% 
+  summarize(median_rel_value = median(rel_value, na.rm = TRUE)) %>% 
+  ungroup %>% 
+  unite(combo_var, c(key, temperature),
+        sep = "_") %>% 
+  spread(combo_var, median_rel_value) %>% 
+  dplyr::select(gene_name, mod_sequence, 
+                phospho_median_fc_37 = rel_fc_126_37,
+                phospho_median_fc_40.4 = rel_fc_127L_40.4,
+                phospho_median_fc_44 = rel_fc_127H_44,
+                phospho_median_fc_46.9 = rel_fc_128L_46.9,
+                phospho_median_fc_49.8 = rel_fc_128H_49.8,
+                phospho_median_fc_52.9 = rel_fc_129L_52.9,
+                phospho_median_fc_55.5 = rel_fc_129H_55.5,
+                phospho_median_fc_58.6 = rel_fc_130L_58.6,
+                phospho_median_fc_62 = rel_fc_130H_62,
+                phospho_median_fc_66.3 = rel_fc_131L_66.3)
+  
+  
+nbf_median_fc_df <- chooseCoherentGeneNames(
+  nbf_peptide_filtered,
+  combo_mean_tm_pSite_anno_functional_scores) %>% 
+  group_by(gene_name, 
+           key, temperature) %>% 
+  summarize(median_rel_value = median(rel_value, na.rm = TRUE)) %>% 
+  ungroup %>% 
+  unite(combo_var, c(key, temperature),
+        sep = "_") %>% 
+  spread(combo_var, median_rel_value) %>% 
+  dplyr::select(gene_name, 
+                unmodified_median_fc_37 = rel_fc_126_37,
+                unmodified_median_fc_40.4 = rel_fc_127L_40.4,
+                unmodified_median_fc_44 = rel_fc_127H_44,
+                unmodified_median_fc_46.9 = rel_fc_128L_46.9,
+                unmodified_median_fc_49.8 = rel_fc_128H_49.8,
+                unmodified_median_fc_52.9 = rel_fc_129L_52.9,
+                unmodified_median_fc_55.5 = rel_fc_129H_55.5,
+                unmodified_median_fc_58.6 = rel_fc_130L_58.6,
+                unmodified_median_fc_62 = rel_fc_130H_62,
+                unmodified_median_fc_66.3 = rel_fc_131L_66.3)
+
+supp3_tab <- combo_mean_tm_pSite_anno_functional_scores %>% 
+  filter(!is.na(mean_nbf), !is.na(mean_phospho)) %>% 
+  dplyr::select(gene_name, Gene_pSite, mod_sequence,
+                Tm_mean_phospho = mean_phospho,
+                Tm_mean_unmodified = mean_nbf,
+                mean_delta_meltPoint,
+                significant,
+                functional_score,
+                Tm_phospho_rep1 = `1.x`,
+                Tm_phospho_rep2 = `2.x`,
+                Tm_phospho_rep3 = `3.x`,
+                Tm_phospho_rep4 = `4.x`,
+                Tm_phospho_rep5 = `5.x`,
+                Tm_unmodified_rep1 = `1.y`,
+                Tm_unmodified_rep2 = `2.y`,
+                Tm_unmodified_rep3 = `3.y`,
+                Tm_unmodified_rep4 = `4.y`,
+                Tm_unmodified_rep5 = `5.y`,
+                delta_meltPoint_1,
+                delta_meltPoint_2,
+                delta_meltPoint_3,
+                delta_meltPoint_4,
+                delta_meltPoint_5,
+                p_adj_1, p_adj_2,
+                p_adj_3, p_adj_4,
+                p_adj_5) %>% 
+  left_join(phospho_median_fc_df, 
+            by = c("gene_name", "mod_sequence")) %>% 
+  left_join(nbf_median_fc_df, 
+            by = c("gene_name"))
+  
+  
+write_csv(supp3_tab, path = "phosphoTPP-supplementary_data3-supplementary_table_phospho_non-modified_comparisons.csv")
 ```
 
 
@@ -763,7 +844,7 @@ technical_rep_theme <- theme(
 ```
 
 
-```{r unmodPhosphoScatter, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Scatterplot of unmodified protein T$_{m}$ estimates vs. phosphopeptide-enriched sample T$_{m}$ estimates by Huang et al.__", fig.asp=1}
+```{r unmodPhosphoScatter, fig.asp=1}
 huang_data_combo <- left_join(
   huang_phospho_hq %>% 
     dplyr::select(uniprot_id = `Uniprot Accession`, 
@@ -774,10 +855,7 @@ huang_data_combo <- left_join(
     filter(HighQuality == "Yes") %>% 
     mutate(average_tm_phospho = as.numeric(average_tm_phospho),
            p_value = as.numeric(p_value)), 
-  huang_bulk_tab %>%
-    dplyr::select(uniprot_id = `Uniprot Accession`,
-                  average_tm_nbf = `Average Tm (°C)`) %>% 
-    mutate(average_tm_nbf = as.numeric(average_tm_nbf)), 
+  huang_bulk, 
   by = "uniprot_id") 
 
 ggplot(huang_data_combo, aes(average_tm_nbf, average_tm_phospho)) +
@@ -792,9 +870,9 @@ ggplot(huang_data_combo, aes(average_tm_nbf, average_tm_phospho)) +
 ```
 
 
-```{r unmodReps, echo=FALSE, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Reproducibility of unmodified sample T$_{m}$ estimates by Huang et al.__ Displayed T$_{m}$ are represented in degree Celsius, the gray line is the identity line, plots with lightblue colored background represent technical replicates according to the labelling by Huang et al. Of note, the data could not be filtered according to the high quality criteria used by Huang et al. because this information was not annotated the supplementary table they supplied.", fig.asp=1}
+```{r unmodReps, echo=FALSE, message=FALSE, warning=FALSE, fig.asp=1}
 huang_unmod_mat_numeric <- data.frame(
-  apply(huang_bulk_tab[,2:13], 
+  apply(huang_raw_df[,2:13], 
         2, as.numeric))
 
 huang_unmod_pm <- ggpairs(huang_unmod_mat_numeric,
@@ -830,7 +908,7 @@ ggmatrix(list(huang_unmod_pm[2, 1] + technical_rep_theme, NULL, NULL, NULL, NULL
   theme(strip.text = element_text(size = 6))
 ```
 
-```{r phoshoReps, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Reproducibility of high quality phosphopeptide-enriched sample T$_{m}$ estimates by Huang et al.__ Displayed T$_{m}$ are represented in degree Celsius, the gray line is the identity line, plots with lightblue colored background represent technical replicates according to the labelling by Huang et al.", fig.asp=1}
+```{r phoshoReps, message=FALSE, warning=FALSE, fig.asp=1}
 huang_mat_numeric <- data.frame(
   apply(huang_phospho_hq[,5:14], 
         2, as.numeric))
@@ -859,9 +937,8 @@ ggmatrix(list(huang_pm[2, 1] + technical_rep_theme, NULL, NULL, NULL, NULL, NULL
   theme(strip.text = element_text(size = 6))
 ```
 
-![__Schematic illustration of the workflow as performed in this study.__]("workflow_savitski_smaller")
 
-```{r savitskiUnModReps, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Reproducibility of high quality unmodified sample T$_{m}$ estimates by the Savitski lab.__", fig.asp=1}
+```{r savitskiUnModReps, message=FALSE, warning=FALSE, fig.asp=1}
 
 pm <- ggpairs(nbf_tm_rep_df, 2:6,
         upper = "blank", diag = NULL,
@@ -875,7 +952,7 @@ ggmatrix(list(pm[2, 1], NULL, NULL, NULL,
          yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
 ```
 
-```{r savitskiPhosphoReps, echo=FALSE, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Reproducibility of high quality phosphopeptide-enriched sample T$_{m}$ estimates in this study.__", fig.asp=1}
+```{r savitskiPhosphoReps, message=FALSE, warning=FALSE, fig.asp=1}
 
 pm_phospho <- ggpairs(phospho_tm_rep_df, 5:9,
         upper = "blank", diag = NULL,
@@ -890,7 +967,7 @@ ggmatrix(list(pm_phospho[2, 1], NULL, NULL, NULL,
 ```
 
 
-```{r deltaTmDist, echo=FALSE, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Comparison of $\\Delta$T$_{m}$ distribution between the two studies.__"}
+```{r deltaTmDist}
 
 colnames(huang_phospho_hq)[19] <- "deltaTm"
 
@@ -901,7 +978,7 @@ delta_tm_df <- bind_rows(
     mutate(dataset = "Huang et al."),
   combo_mean_tm_significant_df %>% 
     rowwise() %>% 
-    mutate(mean_delta_meltPoint = -mean(c(delta_meltPoint_1, delta_meltPoint_2, delta_meltPoint_3,
+    mutate(mean_delta_meltPoint = mean(c(delta_meltPoint_1, delta_meltPoint_2, delta_meltPoint_3,
                                          delta_meltPoint_4, delta_meltPoint_5), na.rm = TRUE)) %>% 
     ungroup %>% 
     dplyr::select(delta_tm = mean_delta_meltPoint) %>% 
@@ -915,35 +992,9 @@ ggplot(delta_tm_df, aes(delta_tm, fill = dataset)) +
   theme(legend.position = "bottom")
 ```
 
-```{r pifComparison, echo=FALSE, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Comparison of __"}
-mxq_df_huang <- read_xlsx("../dat/Hotspot_phosphopeptides_MQ.xlsx", sheet = "evidence")
-mxq_df_potel <- bind_rows(lapply(phosho_mxq_peptide_files, function(x) read_delim(x, delim = "\t")))
 
-mxq_combo_df <- bind_rows(
-  mxq_df_huang %>% dplyr::select(PIF) %>% mutate(dataset = "Huang et al.", PIF = as.numeric(PIF)),
-  mxq_df_potel %>% dplyr::select(PIF) %>% mutate(dataset = "This study", PIF = as.numeric(PIF))
-)
 
-```
-
-```{r pifComparison2, eval = F, echo=FALSE, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Comparison of __"}
-# compare their unmodified vs. phospho PIF
-mxq_unmod_df_huang <- 
-  read_xlsx("../dat/Hotspot_Bulk_phosphopeptides.xlsx", sheet = "evidence")
-
-mxq_combo_df <- bind_rows(
-  mxq_unmod_df_huang %>% dplyr::select(PIF) %>% mutate(dataset = "Huang et al. bulk phosphopeptides", PIF = as.numeric(PIF)),
-  mxq_df_huang %>% dplyr::select(PIF) %>% mutate(dataset = "Huang et al. enriched phosphopeptides", PIF = as.numeric(PIF)),
-  mxq_df_potel %>% dplyr::select(PIF) %>% mutate(dataset = "This study enriched phosphopeptides", PIF = as.numeric(PIF))
-)
-
-ggplot(mxq_combo_df, aes(PIF, fill = dataset)) +
-  geom_density(alpha = 0.25) +
-  theme_bw() +
-  theme(legend.position = "bottom")
-```
-
-```{r s2iComparison3, echo=FALSE, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Comparison of __"}
+```{r s2iComparison"}
 mxq_unmod_df_huang <- 
   read_delim("../dat/Huang_nonphospho_evidence.txt", delim = "\t")
 
@@ -973,8 +1024,8 @@ ggplot(mxq_combo_df, aes(dataset, PIF)) +
 ``` 
 
 
-```{r compareTmOtherDat, echo=FALSE, cache=TRUE, dev=c('pdf'), warning=FALSE, message=FALSE, fig.cap="__Comparison of __"}
-nbf_mean_tm_df <- nbf_tm_rep_df %>% 
+```{r compareTmOtherDat}
+nbf_mean_tm_df <- nbf_tm_rep_fil %>% 
   ungroup %>% 
   rowwise() %>% 
   mutate(mean_Tm = mean(c(`1`, `2`, `3`, `4`, `5`), na.rm = TRUE)) %>% 
@@ -983,19 +1034,10 @@ nbf_mean_tm_df <- nbf_tm_rep_df %>%
 
 huang_mapping <- read_delim("../dat/huang_mapping.txt", delim = "\t")
 
-huang_unmod_mean_tm_df <- huang_unmod_mat_numeric %>% 
-  tbl_df() %>% 
-  mutate(uniprot = huang_unmod_data$`Uniprot Accession`) %>% 
-  left_join(huang_mapping %>% dplyr::select(uniprot = From, gene_name = To), 
-            by = "uniprot") %>% 
-  rowwise() %>% 
-  mutate(huang_mean_tm = mean(
-    c(`Tm.Bio1_1...C.`, `Tm.Bio1_2...C.`, `Tm.Bio2_1...C.`, `Tm.Bio2_2...C.`, 
-      `Tm.Bio3_1...C.`, `Tm.Bio3_2...C.`, `Tm.Bio4_1...C.`, `Tm.Bio4_2...C.`, 
-      `Tm.Bio5_1...C.`, `Tm.Bio5_2...C.`, `Tm.Bio6_1...C.`, `Tm.Bio6_2...C.`),
-    na.rm = TRUE)) %>% 
-  ungroup() %>% 
-  dplyr::select(gene_name, huang_mean_tm) %>% 
+huang_unmod_mean_tm_df <- huang_bulk %>% 
+  left_join(huang_mapping %>% dplyr::select(uniprot_id = From, gene_name = To), 
+            by = "uniprot_id") %>% 
+  dplyr::select(gene_name, huang_mean_tm = average_tm_nbf) %>% 
   group_by(gene_name) %>% 
   summarize(huang_mean_tm = mean(huang_mean_tm, na.rm = TRUE)) %>% 
   ungroup %>% 
@@ -1006,7 +1048,7 @@ tan_hq_meltCurve_param_df <-
   dplyr::select(gene_name, tan_Tm = meltPoint)
 
 
-becher_cell_hela <- read_xlsx("../dat/Becher-s2.0-S0092867418303854-mmc4-TableS4-HeLa_G1S.xlsx"),
+becher_cell_hela <- read_xlsx("../dat/Becher-s2.0-S0092867418303854-mmc4-TableS4-HeLa_G1S.xlsx",
                               sheet = 2) %>% 
   dplyr::select(gene_name, becher_cell_hela_mean_Tm = Tm.median) %>% 
   mutate(becher_cell_hela_mean_Tm = as.numeric(becher_cell_hela_mean_Tm))
@@ -1032,7 +1074,6 @@ ggmatrix(list(pm_others[2, 1], NULL, NULL,
   theme(strip.text = element_text(size = 8))
 ```
 
-## Additonal comparisons of the two datasets
 
 Abundance vs. delta Tm comparison
 ```{r eval=FALSE}
@@ -1097,7 +1138,7 @@ ggplot(corrected_mean_top3_deltaTm_df, aes(mean_top3_corrected, mean_delta_meltP
 ```
 
 Delta Tm comparison between the two studies
-```{r, eval=FALSE}
+```{r}
 delta_tm <- left_join(
     mean_deltaTm_df %>% 
         dplyr::select(Gene_pSite, mean_delta_meltPoint,
