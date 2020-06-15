@@ -15,7 +15,7 @@ Status](https://travis-ci.org/nkurzaw/phosphoTPP.svg?branch=master)](https://tra
 # Introduction
 
 This vignette illustrates the analysis of the phosphoTPP dataset by
-[https://www.biorxiv.org/content/10.1101/2020.01.14.903849v1](Potel et al. (2020)) and compares it to the one by Huang et al. (2019).
+[Potel et al. (2020)](https://www.biorxiv.org/content/10.1101/2020.01.14.903849v1) and compares it to the one by Huang et al. (2019).
 
 # Step-by-step walk through the analysis
 
