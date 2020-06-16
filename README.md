@@ -33,7 +33,7 @@ also be downloaded from the respective journal website:
 
 The processed data by Potel et al. (2020) and reprocessed data by Huang
 et al. (2019) can be downloaded from Mendeley:
-<https://data.mendeley.com/datasets/4vwzvxfcnd/3>
+<https://data.mendeley.com/datasets/4vwzvxfcnd/4>
 
 The table `1-s2.0-S0092867418303854-mmc4.xlsx` (used for supplementary
 figures comparing different TPP-TR experiments) can be downloaded from
@@ -1175,38 +1175,6 @@ ggmatrix(list(huang_pm[2, 1] + technical_rep_theme, NULL, NULL, NULL, NULL, NULL
 ```
 
 ![](inst/figures/README-phoshoReps-1.png)<!-- -->
-
-``` r
-
-pm <- ggpairs(nbf_tm_rep_df, 2:6,
-        upper = "blank", diag = NULL,
-        lower = list(continuous = wrap(lowerFnReg)))
-
-ggmatrix(list(pm[2, 1], NULL, NULL, NULL,
-              pm[3, 1], pm[3,2], NULL, NULL,
-              pm[4, 1], pm[4,2], pm[4,3], NULL,
-              pm[5, 1], pm[5,2], pm[5,3], pm[5,4]), 4, 4,
-         xAxisLabels = c("Tm rep1", "Tm rep2", "Tm rep3", "Tm rep4"),
-         yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
-```
-
-![](inst/figures/README-savitskiUnModReps-1.png)<!-- -->
-
-``` r
-
-pm_phospho <- ggpairs(phospho_tm_rep_df, 5:9,
-        upper = "blank", diag = NULL,
-        lower = list(continuous = wrap(lowerFnReg)))
-
-ggmatrix(list(pm_phospho[2, 1], NULL, NULL, NULL,
-              pm_phospho[3, 1], pm_phospho[3,2], NULL, NULL,
-              pm_phospho[4, 1], pm_phospho[4,2], pm_phospho[4,3], NULL,
-              pm_phospho[5, 1], pm_phospho[5,2], pm_phospho[5,3], pm_phospho[5,4]), 4, 4,
-         xAxisLabels = c("Tm rep1", "Tm rep2", "Tm rep3", "Tm rep4"),
-         yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
-```
-
-![](inst/figures/README-savitskiPhosphoReps-1.png)<!-- -->
 
 ``` r
 
