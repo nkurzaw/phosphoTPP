@@ -1083,46 +1083,11 @@ ggmatrix(list(pm_others[2, 1], NULL, NULL,
 ```
 
 
-Abundance vs. delta Tm comparison
-```{r eval=FALSE}
-correctTop3ForTpp <- function(df, ref_channel = "signal_sum_126",
-                              sig_string = "signal_sum"){
-    total_signal_sum <-  sum(
-        as.matrix((df %>% dplyr::select(matches(sig_string))))[1,]
-    )
-    ref_2_total_frac <- as.vector((df %>% dplyr::select(matches(ref_channel)))[1,]) /
-        total_signal_sum
-    df_out <- df %>% 
-        dplyr::select(protein_id, gene_name, top3) %>% 
-        mutate(top3Corrected = top3 * ref_2_total_frac) %>% 
-        dplyr::select(-top3)
-    return(df_out)
-}
-
-
-combo_corrected_top3_nbf <- bind_rows(lapply(nbf_protein_tabs, function(tab){
-    tab_fil <- filter(tab, qupm > 0, !grepl("##", protein_id))
-    per_tab_df <- bind_rows(lapply(seq(nrow(tab_fil)), function(i){
-        correctTop3ForTpp(df = tab_fil[i,]) %>% 
-            mutate(replicate = i)
-    }))
-    return(per_tab_df)
-}))
-    
-```
-
-```{r, echo=FALSE}
-combo_corrected_top3_nbf <- readRDS("prerun/combo_corrected_top3_nbf.rds")
-```
-
+Delta Tm comparison between the two studies
 ```{r}
-combo_corrected_mean_top3_nbf <- combo_corrected_top3_nbf %>% 
-    group_by(gene_name) %>% 
-    summarize(mean_top3_corrected = mean(top3Corrected$signal_sum_126, na.rm = TRUE))
-
 mean_deltaTm_df <- combo_mean_tm_pSite_anno %>% 
     rowwise() %>% 
-    mutate(mean_delta_meltPoint = -mean(
+    mutate(mean_delta_meltPoint = mean(
         c(delta_meltPoint_1, delta_meltPoint_2, delta_meltPoint_3, 
           delta_meltPoint_4, delta_meltPoint_5), na.rm = TRUE)) %>% 
     ungroup %>% 
@@ -1130,23 +1095,6 @@ mean_deltaTm_df <- combo_mean_tm_pSite_anno %>%
                   phospho_site_STY, mean_delta_meltPoint,
                   significant)
 
-corrected_mean_top3_deltaTm_df <- left_join(
-    mean_deltaTm_df,
-    chooseCoherentGeneNames(
-        combo_corrected_mean_top3_nbf, mean_deltaTm_df),
-    by = "gene_name"
-)
-
-ggplot(corrected_mean_top3_deltaTm_df, aes(mean_top3_corrected, mean_delta_meltPoint)) +
-    geom_point(alpha = 0.25) +
-    geom_point(color = "red", data = filter(corrected_mean_top3_deltaTm_df, significant)) +
-    labs(x = "Protein abundance (top3)",
-         y = "delta Tm") +
-    theme_bw()
-```
-
-Delta Tm comparison between the two studies
-```{r}
 delta_tm <- left_join(
     mean_deltaTm_df %>% 
         dplyr::select(Gene_pSite, mean_delta_meltPoint,

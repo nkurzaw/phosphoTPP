@@ -15,7 +15,7 @@ Status](https://travis-ci.org/nkurzaw/phosphoTPP.svg?branch=master)](https://tra
 # Introduction
 
 This vignette illustrates the analysis of the phosphoTPP dataset by
-[Potel et al. (2020)](https://www.biorxiv.org/content/10.1101/2020.01.14.903849v1) and compares it to the one by [Huang et al. (2019)](https://www.nature.com/articles/s41592-019-0499-3).
+Potel et al. (2020) and compares it to the one by Huang et al. (2019).
 
 # Step-by-step walk through the analysis
 
@@ -562,7 +562,7 @@ out_nbf_df <- nbf_peptide_filtered %>%
   ungroup
 ```
 
-We then filter for hiqh quality fits according to the criteria defined by
+We then filter for hiqh quality fit according to the criteria defined by
 Savitski et al. (2014) and inspect reproducibility by visualization of
 melting point scatter plots between the different replicates
 
@@ -1178,6 +1178,38 @@ ggmatrix(list(huang_pm[2, 1] + technical_rep_theme, NULL, NULL, NULL, NULL, NULL
 
 ``` r
 
+pm <- ggpairs(nbf_tm_rep_df, 2:6,
+        upper = "blank", diag = NULL,
+        lower = list(continuous = wrap(lowerFnReg)))
+
+ggmatrix(list(pm[2, 1], NULL, NULL, NULL,
+              pm[3, 1], pm[3,2], NULL, NULL,
+              pm[4, 1], pm[4,2], pm[4,3], NULL,
+              pm[5, 1], pm[5,2], pm[5,3], pm[5,4]), 4, 4,
+         xAxisLabels = c("Tm rep1", "Tm rep2", "Tm rep3", "Tm rep4"),
+         yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
+```
+
+![](inst/figures/README-savitskiUnModReps-1.png)<!-- -->
+
+``` r
+
+pm_phospho <- ggpairs(phospho_tm_rep_df, 5:9,
+        upper = "blank", diag = NULL,
+        lower = list(continuous = wrap(lowerFnReg)))
+
+ggmatrix(list(pm_phospho[2, 1], NULL, NULL, NULL,
+              pm_phospho[3, 1], pm_phospho[3,2], NULL, NULL,
+              pm_phospho[4, 1], pm_phospho[4,2], pm_phospho[4,3], NULL,
+              pm_phospho[5, 1], pm_phospho[5,2], pm_phospho[5,3], pm_phospho[5,4]), 4, 4,
+         xAxisLabels = c("Tm rep1", "Tm rep2", "Tm rep3", "Tm rep4"),
+         yAxisLabels = c("Tm rep2", "Tm rep3","Tm rep4","Tm rep5"))
+```
+
+![](inst/figures/README-savitskiPhosphoReps-1.png)<!-- -->
+
+``` r
+
 colnames(huang_phospho_hq)[19] <- "deltaTm"
 
 delta_tm_df <- bind_rows(
@@ -1432,60 +1464,28 @@ ggmatrix(list(pm_others[2, 1], NULL, NULL,
          yAxisLabels = c("Becher et al. (HeLa)", 
                          "This study (HeLa)", "Huang et al. (HEK293T)")) +
   theme(strip.text = element_text(size = 8))
-#> Warning: Removed 5129 rows containing non-finite values (stat_poly_eq).
-#> Warning: Removed 5129 rows containing missing values (geom_point).
-#> Warning: Removed 4810 rows containing non-finite values (stat_poly_eq).
-#> Warning: Removed 4810 rows containing missing values (geom_point).
-#> Warning: Removed 4459 rows containing non-finite values (stat_poly_eq).
-#> Warning: Removed 4459 rows containing missing values (geom_point).
-#> Warning: Removed 5344 rows containing non-finite values (stat_poly_eq).
-#> Warning: Removed 5344 rows containing missing values (geom_point).
-#> Warning: Removed 5206 rows containing non-finite values (stat_poly_eq).
-#> Warning: Removed 5206 rows containing missing values (geom_point).
-#> Warning: Removed 5346 rows containing non-finite values (stat_poly_eq).
-#> Warning: Removed 5346 rows containing missing values (geom_point).
+#> Warning: Removed 6696 rows containing non-finite values (stat_poly_eq).
+#> Warning: Removed 6696 rows containing missing values (geom_point).
+#> Warning: Removed 6975 rows containing non-finite values (stat_poly_eq).
+#> Warning: Removed 6975 rows containing missing values (geom_point).
+#> Warning: Removed 5234 rows containing non-finite values (stat_poly_eq).
+#> Warning: Removed 5234 rows containing missing values (geom_point).
+#> Warning: Removed 8027 rows containing non-finite values (stat_poly_eq).
+#> Warning: Removed 8027 rows containing missing values (geom_point).
+#> Warning: Removed 7002 rows containing non-finite values (stat_poly_eq).
+#> Warning: Removed 7002 rows containing missing values (geom_point).
+#> Warning: Removed 7857 rows containing non-finite values (stat_poly_eq).
+#> Warning: Removed 7857 rows containing missing values (geom_point).
 ```
 
 ![](inst/figures/README-compareTmOtherDat-1.png)<!-- -->
 
-Abundance vs. delta Tm comparison
+Delta Tm comparison between the two studies
 
 ``` r
-correctTop3ForTpp <- function(df, ref_channel = "signal_sum_126",
-                              sig_string = "signal_sum"){
-    total_signal_sum <-  sum(
-        as.matrix((df %>% dplyr::select(matches(sig_string))))[1,]
-    )
-    ref_2_total_frac <- as.vector((df %>% dplyr::select(matches(ref_channel)))[1,]) /
-        total_signal_sum
-    df_out <- df %>% 
-        dplyr::select(protein_id, gene_name, top3) %>% 
-        mutate(top3Corrected = top3 * ref_2_total_frac) %>% 
-        dplyr::select(-top3)
-    return(df_out)
-}
-
-
-combo_corrected_top3_nbf <- bind_rows(lapply(nbf_protein_tabs, function(tab){
-    tab_fil <- filter(tab, qupm > 0, !grepl("##", protein_id))
-    per_tab_df <- bind_rows(lapply(seq(nrow(tab_fil)), function(i){
-        correctTop3ForTpp(df = tab_fil[i,]) %>% 
-            mutate(replicate = i)
-    }))
-    return(per_tab_df)
-}))
-    
-```
-
-``` r
-combo_corrected_mean_top3_nbf <- combo_corrected_top3_nbf %>% 
-    group_by(gene_name) %>% 
-    summarize(mean_top3_corrected = mean(top3Corrected$signal_sum_126, na.rm = TRUE))
-#> `summarise()` ungrouping output (override with `.groups` argument)
-
 mean_deltaTm_df <- combo_mean_tm_pSite_anno %>% 
     rowwise() %>% 
-    mutate(mean_delta_meltPoint = -mean(
+    mutate(mean_delta_meltPoint = mean(
         c(delta_meltPoint_1, delta_meltPoint_2, delta_meltPoint_3, 
           delta_meltPoint_4, delta_meltPoint_5), na.rm = TRUE)) %>% 
     ungroup %>% 
@@ -1493,27 +1493,6 @@ mean_deltaTm_df <- combo_mean_tm_pSite_anno %>%
                   phospho_site_STY, mean_delta_meltPoint,
                   significant)
 
-corrected_mean_top3_deltaTm_df <- left_join(
-    mean_deltaTm_df,
-    chooseCoherentGeneNames(
-        combo_corrected_mean_top3_nbf, mean_deltaTm_df),
-    by = "gene_name"
-)
-
-ggplot(corrected_mean_top3_deltaTm_df, aes(mean_top3_corrected, mean_delta_meltPoint)) +
-    geom_point(alpha = 0.25) +
-    geom_point(color = "red", data = filter(corrected_mean_top3_deltaTm_df, significant)) +
-    labs(x = "Protein abundance (top3)",
-         y = "delta Tm") +
-    theme_bw()
-#> Warning: Removed 1607 rows containing missing values (geom_point).
-```
-
-![](inst/figures/README-unnamed-chunk-35-1.png)<!-- -->
-
-Delta Tm comparison between the two studies
-
-``` r
 delta_tm <- left_join(
     mean_deltaTm_df %>% 
         dplyr::select(Gene_pSite, mean_delta_meltPoint,
@@ -1547,7 +1526,7 @@ ggplot(delta_tm, aes(mean_delta_meltPoint_huang, mean_delta_meltPoint)) +
 #> `geom_smooth()` using formula 'y ~ x'
 ```
 
-![](inst/figures/README-unnamed-chunk-36-1.png)<!-- -->
+![](inst/figures/README-unnamed-chunk-33-1.png)<!-- -->
 
 ``` r
 sessionInfo()
