@@ -34,7 +34,7 @@ The supplementary tables `41592_2019_499_MOESM3_ESM.xlsx` and `41592_2019_499_MO
 
 The supplementary tables `56035_2_data_set_478471_pxb8gk.xlsx` and `56035_2_data_set_478475_pxb8l1-tableS3.xlsx` by @ochoa_2020 can also be downloaded from the respective journal website: https://www.nature.com/articles/s41587-019-0344-3#Sec30 .
 
-The processed data by @potel_2020 and reprocessed data by @huang_2019 can be downloaded from Mendeley: https://data.mendeley.com/datasets/4vwzvxfcnd/3
+The processed data by @potel_2020 and reprocessed data by @huang_2019 can be downloaded from Mendeley: https://data.mendeley.com/datasets/4vwzvxfcnd/4
 
 The table `1-s2.0-S0092867418303854-mmc4.xlsx` (used for supplementary figures comparing different TPP-TR experiments) can be downloaded from the respective journal website: https://www.sciencedirect.com/science/article/pii/S0092867418303854#app2
 
@@ -815,7 +815,7 @@ supp3_tab <- combo_mean_tm_pSite_anno_functional_scores %>%
             by = c("gene_name"))
   
   
-write_csv(supp3_tab, path = "/Volumes/savitski/01_users/Isabelle/experiments/20190830_phosphoTPP/publication/2nd_submission/phosphoTPP-supplementary_data3-supplementary_table_phospho_non-modified_comparisons.csv")
+write_csv(supp3_tab, path = "phosphoTPP-supplementary_data3-supplementary_table_phospho_non-modified_comparisons.csv")
 ```
 
 
