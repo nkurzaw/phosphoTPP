@@ -1531,7 +1531,7 @@ ggplot(delta_tm, aes(mean_delta_meltPoint_huang, mean_delta_meltPoint)) +
 
 ![](inst/figures/README-unnamed-chunk-33-1.png)<!-- -->
 
-Blue dots correspond to phosphosites found to be significantly shifted by Huang et al., red dots were found significantly shifted by Potel et al., salmon coloured dots were found by both.  
+Blue dots correspond to phosphosites found significantly shifted by Huang et al., red dots were found significantly shifted by Potel et al., salmon coloured dots were found by both.  
 
 ``` r
 sessionInfo()
