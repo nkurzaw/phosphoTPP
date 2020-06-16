@@ -562,7 +562,7 @@ out_nbf_df <- nbf_peptide_filtered %>%
   ungroup
 ```
 
-We then filter for hiqh quality fit according to the criteria defined by
+We then filter for hiqh quality fits according to the criteria defined by
 Savitski et al. (2014) and inspect reproducibility by visualization of
 melting point scatter plots between the different replicates
 
@@ -1083,7 +1083,7 @@ supp3_tab <- combo_mean_tm_pSite_anno_functional_scores %>%
             by = c("gene_name"))
   
   
-write_csv(supp3_tab, path = "/Volumes/savitski/01_users/Isabelle/experiments/20190830_phosphoTPP/publication/2nd_submission/phosphoTPP-supplementary_data3-supplementary_table_phospho_non-modified_comparisons.csv")
+write_csv(supp3_tab, path = "phosphoTPP-supplementary_data3-supplementary_table_phospho_non-modified_comparisons.csv")
 ```
 
 # Supplementary figures
