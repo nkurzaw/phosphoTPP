@@ -12,8 +12,12 @@ Status](https://travis-ci.org/nkurzaw/phosphoTPP.svg?branch=master)](https://tra
 > Analysis of the phosphoTPP dataset by Potel et al. and comparison to
 > Huang et al.
 
-Potel\*, Kurzawa\*, Becher\*, et al. 2020. "Impact of Phosphorylation on
+Potel\*, Kurzawa\*, Becher\* et al. 2020. "Impact of Phosphorylation on
 Thermal Stability of Proteins." *BioRxiv*, <https://doi.org/10.1101/2020.01.14.903849>
+
+which is now published as:
+
+Potel\*, Kurzawa\*, Becher\* et al. 2021. "Impact of phosphorylation on thermal stability of proteins." *Nat Methods* 18, 757–759, <https://doi.org/10.1038/s41592-021-01177-5>
 
 # Introduction
 
